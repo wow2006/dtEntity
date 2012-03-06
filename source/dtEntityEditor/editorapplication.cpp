@@ -40,8 +40,12 @@
 #include <osgDB/FileUtils>
 #include <osgDB/FileNameUtils>
 #include <osgViewer/Viewer>
-#include <osgViewer/ViewerEventHandlers>
-#include <GL/gl.h>
+#include <osgViewer/ViewerEventHandlers>  
+#ifdef __APPLE__
+# include <OpenGL/gl.h>
+#else
+# include <GL/gl.h>
+#endif
 #include <iostream>
 #include <QtCore/QDir>
 #include <osgDB/FileUtils>
