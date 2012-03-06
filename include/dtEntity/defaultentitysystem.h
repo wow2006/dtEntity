@@ -36,7 +36,11 @@
 #if defined(_MSC_VER) && (_MSC_VER >=1500)
    #include <unordered_map>
 #else
+   #ifdef __APPLE__
+   #include <ext/hash_map>
+   #else
    #include <hash_map>
+   #endif
 #endif
 
 
@@ -141,7 +145,7 @@ namespace dtEntity
       ////////////////////////////////////////////////////////////////////////////////
       ~DefaultEntitySystem()
       {
-         DestroyAll(mComponents);
+         this->DestroyAll(mComponents);
       }
 
       virtual ComponentType GetComponentType() const

@@ -59,6 +59,15 @@ IF (BUILD_WITH_DELTA3D)
 	  LINK_DIRECTORIES( ${DELTA3D_EXT_DIR}/lib )
 	ENDIF (DELTA3D_EXT_DIR)
 ENDIF (BUILD_WITH_DELTA3D)
+       
+if(APPLE)
+    if ("${CMAKE_OSX_SYSROOT}" MATCHES ".*/Developer/SDKs/MacOSX10.7.sdk") 
+        MESSAGE(STATUS "MacOSX10.7.sdk")
+        SET(CMAKE_OSX_ARCHITECTURES "x86_64" CACHE STRING "Build architectures for OSX" FORCE)
+        SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -mmacosx-version-min=10.7 -fvisibility-inlines-hidden" CACHE STRING "Flags used by the compiler during all build types." FORCE)
+    endif()
+endif()
+
 
 ADD_SUBDIRECTORY(source/dtEntity)
 ADD_SUBDIRECTORY(source/dtEntitySimulation)
