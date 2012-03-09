@@ -90,9 +90,12 @@ ENDIF(CMAKE_COMPILER_IS_GNUCXX)
 ADD_SUBDIRECTORY(ext)  
 ADD_SUBDIRECTORY(source)
 ADD_SUBDIRECTORY(examples)
-
-install(DIRECTORY ${CMAKE_SOURCE_DIR}/BaseAssets/ DESTINATION BaseAssets PATTERN ".svn" EXCLUDE)        
-
+     
+if(UNIX)
+    install(DIRECTORY ${CMAKE_SOURCE_DIR}/BaseAssets/ DESTINATION share/dtEntity/BaseAssets PATTERN ".svn" EXCLUDE)        
+else()
+    install(DIRECTORY ${CMAKE_SOURCE_DIR}/BaseAssets/ DESTINATION BaseAssets PATTERN ".svn" EXCLUDE)        
+endif()
 # This needs to be run very last so other parts of the scripts can take
 # advantage of this.
 IF(NOT DTENTITY_CONFIG_HAS_BEEN_RUN_BEFORE)

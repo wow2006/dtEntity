@@ -8,8 +8,11 @@ IF(BUILD_EXAMPLES)
 	ADD_SUBDIRECTORY(testPhysX)
   ENDIF(BUILD_PHYSX)
 
-  install(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/ProjectAssets/ DESTINATION ProjectAssets PATTERN ".svn" EXCLUDE)        
-
+  if(UNIX)
+      install(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/ProjectAssets/ DESTINATION share/dtEntity/ProjectAssets PATTERN ".svn" EXCLUDE)        
+  else()
+      install(DIRECTORY ${CMAKE_SOURCE_DIR}/ProjectAssets/ DESTINATION ProjectAssets PATTERN ".svn" EXCLUDE)        
+  endif()
 ENDIF(BUILD_EXAMPLES)
 
 IF(BUILD_QT)
