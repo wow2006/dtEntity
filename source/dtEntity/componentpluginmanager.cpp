@@ -85,7 +85,11 @@ namespace dtEntity
       return ".dll";
 #endif
 #else
+#if defined (_DEBUG)
+      return "d.so";
+#else
       return ".so";
+#endif
 #endif
    }
 
