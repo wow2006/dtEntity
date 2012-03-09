@@ -2,9 +2,7 @@ CMAKE_MINIMUM_REQUIRED(VERSION 2.6.0 FATAL_ERROR)
  
 PROJECT(dtEntity)
 
-IF (WIN32)
 SET(CMAKE_DEBUG_POSTFIX  "d")
-ENDIF (WIN32)
 
 #to allow usage of hash_map:
 IF(UNIX)
@@ -60,12 +58,14 @@ IF (BUILD_WITH_DELTA3D)
 	ENDIF (DELTA3D_EXT_DIR)
 ENDIF (BUILD_WITH_DELTA3D)
        
-if(APPLE)
-    if ("${CMAKE_OSX_SYSROOT}" MATCHES ".*/Developer/SDKs/MacOSX10.7.sdk") 
-        MESSAGE(STATUS "MacOSX10.7.sdk")
-        SET(CMAKE_OSX_ARCHITECTURES "x86_64" CACHE STRING "Build architectures for OSX" FORCE)
-        SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -mmacosx-version-min=10.7 -fvisibility-inlines-hidden" CACHE STRING "Flags used by the compiler during all build types." FORCE)
-    endif()
+if(APPLE) 
+    if(NOT DTENTITY_CONFIG_HAS_BEEN_RUN_BEFORE)
+        if ("${CMAKE_OSX_SYSROOT}" MATCHES ".*/Developer/SDKs/MacOSX10.7.sdk") 
+            MESSAGE(STATUS "MacOSX10.7.sdk")
+            SET(CMAKE_OSX_ARCHITECTURES "x86_64" CACHE STRING "Build architectures for OSX" FORCE)
+            SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -mmacosx-version-min=10.7 -fvisibility-inlines-hidden" CACHE STRING "Flags used by the compiler during all build types." FORCE)
+        endif()    
+     endif()
 endif()
 
 IF(BUILD_QT)
@@ -80,4 +80,10 @@ ADD_SUBDIRECTORY(ext)
 ADD_SUBDIRECTORY(source)
 ADD_SUBDIRECTORY(examples)
 
+install(DIRECTORY ${CMAKE_SOURCE_DIR}/BaseAssets/ DESTINATION BaseAssets PATTERN ".svn" EXCLUDE)        
 
+# This needs to be run very last so other parts of the scripts can take
+# advantage of this.
+IF(NOT DTENTITY_CONFIG_HAS_BEEN_RUN_BEFORE)
+    SET(DTENTITY_CONFIG_HAS_BEEN_RUN_BEFORE 1 CACHE INTERNAL "Flag to track whether this is the first time running CMake or if CMake has been configured before")
+ENDIF()
