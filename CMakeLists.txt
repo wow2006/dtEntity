@@ -1,5 +1,5 @@
 CMAKE_MINIMUM_REQUIRED(VERSION 2.6.0 FATAL_ERROR)
- 
+
 PROJECT(dtEntity)
 
 SET(CMAKE_DEBUG_POSTFIX  "d")
@@ -63,38 +63,40 @@ FIND_PACKAGE(OpenSceneGraph REQUIRED)
 
 
 IF (BUILD_WITH_DELTA3D)
-	LINK_DIRECTORIES( ${DELTA3D_LIB_DIR} )
-	IF (DELTA3D_EXT_DIR)
-	  LINK_DIRECTORIES( ${DELTA3D_EXT_DIR}/lib )
-	ENDIF (DELTA3D_EXT_DIR)
+    LINK_DIRECTORIES( ${DELTA3D_LIB_DIR} )
+    IF (DELTA3D_EXT_DIR)
+      LINK_DIRECTORIES( ${DELTA3D_EXT_DIR}/lib )
+    ENDIF (DELTA3D_EXT_DIR)
 ENDIF (BUILD_WITH_DELTA3D)
-       
-if(APPLE) 
-    if(NOT DTENTITY_CONFIG_HAS_BEEN_RUN_BEFORE)
-        if ("${CMAKE_OSX_SYSROOT}" MATCHES ".*/Developer/SDKs/MacOSX10.7.sdk") 
+
+if(NOT DTENTITY_CONFIG_HAS_BEEN_RUN_BEFORE)
+    set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -D_DEBUG")
+
+    if(APPLE)
+        if ("${CMAKE_OSX_SYSROOT}" MATCHES ".*/Developer/SDKs/MacOSX10.7.sdk")
             MESSAGE(STATUS "MacOSX10.7.sdk")
             SET(CMAKE_OSX_ARCHITECTURES "x86_64" CACHE STRING "Build architectures for OSX" FORCE)
             SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -mmacosx-version-min=10.7 -fvisibility-inlines-hidden" CACHE STRING "Flags used by the compiler during all build types." FORCE)
-        endif()    
+        endif()
      endif()
 endif()
 
 IF(BUILD_QT)
    OPTION(BUILD_ENET_INTEGRATION "Build eNet integration" OFF)
-ENDIF(BUILD_QT)  
+ENDIF(BUILD_QT)
 
 IF(CMAKE_COMPILER_IS_GNUCXX)
   ADD_DEFINITIONS(${CMAKE_CXX_FLAGS} "-Wno-deprecated")
 ENDIF(CMAKE_COMPILER_IS_GNUCXX)
-     
-ADD_SUBDIRECTORY(ext)  
+
+ADD_SUBDIRECTORY(ext)
 ADD_SUBDIRECTORY(source)
 ADD_SUBDIRECTORY(examples)
-     
+
 if(UNIX)
-    install(DIRECTORY ${CMAKE_SOURCE_DIR}/BaseAssets/ DESTINATION share/dtEntity/BaseAssets PATTERN ".svn" EXCLUDE)        
+    install(DIRECTORY ${CMAKE_SOURCE_DIR}/BaseAssets/ DESTINATION share/dtEntity/BaseAssets PATTERN ".svn" EXCLUDE)
 else()
-    install(DIRECTORY ${CMAKE_SOURCE_DIR}/BaseAssets/ DESTINATION BaseAssets PATTERN ".svn" EXCLUDE)        
+    install(DIRECTORY ${CMAKE_SOURCE_DIR}/BaseAssets/ DESTINATION BaseAssets PATTERN ".svn" EXCLUDE)
 endif()
 # This needs to be run very last so other parts of the scripts can take
 # advantage of this.
