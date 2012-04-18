@@ -33,11 +33,16 @@ SET(OSG_LIBRARIES CACHE STRING "OpenSceneGraph libraries to link against")
 SET(OSG_ROOT_DIR $ENV{OSG_DIR} CACHE PATH "Root directory of OSG source tree")
 SET(OSG_BUILD_DIR ${OSG_ROOT_DIR} CACHE PATH "Root directory for OSG build to use")
 
-FIND_PATH(OSG_INCLUDE_DIRS osg/Program PATHS
-   $ENV{VIEWER_EXT_DEP}/include
-   ${OSG_ROOT_DIR}/include
-   $ENV{OSG_DIR}
-   $ENV{OSG_DIR}/include
+IF(NOT OSG_ROOT)
+    SET(OSG_ROOT $ENV{OSG_ROOT})
+ENDIF(NOT OSG_ROOT)
+
+FIND_PATH(OSG_INCLUDE_DIRS osg/Node PATHS 
+    "${OSG_ROOT}/include"
+    $ENV{VIEWER_EXT_DEP}/include
+    ${OSG_ROOT_DIR}/include
+    $ENV{OSG_DIR}
+    $ENV{OSG_DIR}/include
 	$ENV{OSG_INC}
 	
 	$ENV{DELTA3D_EXT}
