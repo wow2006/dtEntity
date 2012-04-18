@@ -22,7 +22,12 @@
 #include <assert.h>
 #include <sstream>
 #include <osg/io_utils>
-#include <dtEntity/log.h>
+#include <dtEntity/log.h>              
+
+#ifdef _DEBUG
+#include <limits.h>
+#endif
+
 namespace dtEntity
 {
   
