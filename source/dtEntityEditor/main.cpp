@@ -37,7 +37,7 @@
 #include <QtGui/QApplication>
 #include <QtCore/QtPlugin>
 
-#ifdef __GNUC__
+#if defined(__GNUC__) && not defined(__APPLE__)
    #include <X11/X.h>
    #include <X11/Xlib.h>
 #endif
@@ -73,7 +73,7 @@ int main(int argc, char *argv[])
 {
 
    // enable multithreaded opengl on linux
-#ifdef __GNUC__
+#if defined(__GNUC__) && not defined(__APPLE__)
    XInitThreads();
 #endif
 
