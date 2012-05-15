@@ -105,6 +105,18 @@ namespace dtEntityQtWidgets
    };
 
    ////////////////////////////////////////////////////////////////////////////////
+   class TextAreaDelegateFactory : public DelegateFactory
+   {
+   public:
+      TextAreaDelegateFactory(const QString& language);
+      virtual PropertySubDelegate* Create(TreeItem* parent, const QString& propname, const dtEntity::Property* prop) const;
+
+   private:
+      QString mLanguage;
+
+   };
+
+   ////////////////////////////////////////////////////////////////////////////////
    class ComponentDelegateFactory : public DelegateFactory
    {
    public:

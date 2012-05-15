@@ -37,14 +37,14 @@
 namespace dtEntity
 {
 
-   void AddToList(std::list<dtEntity::ComponentPluginFactory*>& lst, int count, ...) 
+   void AddToList(std::list<dtEntity::ComponentPluginFactory*>& lst, int count, ...)
    {
-     
+
       va_list ap;
       va_start (ap, count);
       for (int i = 0; i < count; ++i)
       {
-         lst.push_back(va_arg(ap, dtEntity::ComponentPluginFactory*));  
+         lst.push_back(va_arg(ap, dtEntity::ComponentPluginFactory*));
       }
       va_end (ap);
    }
@@ -62,8 +62,8 @@ namespace dtEntity
    ////////////////////////////////////////////////////////////////////////////////
    void ComponentPluginManager::AddFactory(ComponentPluginFactory* factory)
    {
-      ComponentType ctype = SID(factory->GetName());
-      if(ctype == 0 || mFactories.find(ctype) != mFactories.end())
+      ComponentType ctype = dtEntity::SID(factory->GetName());
+      if(ctype == StringId() || mFactories.find(ctype) != mFactories.end())
       {
          LOG_ERROR("Factory already registered with type " << factory->GetName());
       }
@@ -79,16 +79,16 @@ namespace dtEntity
       // find out library extension for this system
       // take care of debug/release library stuff on windows
 #if defined(_MSC_VER) || defined(__CYGWIN__) || defined(__MINGW32__) || defined( __BCPLUSPLUS__)  || defined( __MWERKS__)
-#if defined (_DEBUG)
+#   if defined (_DEBUG)
       return "d.dll";
-#else
+#   else
       return ".dll";
-#endif
+#   endif
 #else
 #if defined (_DEBUG)
       return "d.so";
 #else
-      return ".so";
+   return ".so";
 #endif
 #endif
    }
@@ -109,34 +109,44 @@ namespace dtEntity
    /** load all dlls in dir and check for plugin factories */
    void ComponentPluginManager::LoadPluginsInDir(const std::string& path)
    {
-      
-      if(!osgDB::fileExists(path) || osgDB::fileType(path) != osgDB::DIRECTORY)
+      std::string cleanedPath(path);
+      if (path[path.size() - 1] == osgDB::getNativePathSeparator())
       {
+         // remove the trailing path separator as this causes issues...
+         cleanedPath = path.substr(0, path.size() - 1);
+      }
+
+      if(!osgDB::fileExists(cleanedPath))
+      {
+         LOG_ALWAYS("Plugin folder not found! Path: " + cleanedPath);
          return;
       }
 
       std::string libExtension = GetLibExtension();
+      LOG_DEBUG("Looking for plugins with extension: " + libExtension);
 
       // get libs from directory
-      osgDB::DirectoryContents files = osgDB::getDirectoryContents(path);
+      osgDB::DirectoryContents files = osgDB::getDirectoryContents(cleanedPath);
 
       // for each library in dir
       osgDB::DirectoryContents::const_iterator i;
       for(i = files.begin(); i != files.end(); ++i)
       {
          std::string fileName = *i;
-         
-         if(fileName.size() <= libExtension.size()) continue;
+
+         if(fileName.size() <= libExtension.size())
+            continue;
 
          std::string ending = fileName.substr(fileName.size() - libExtension.size(), fileName.size());
          if(ending.compare(libExtension) != 0)
          {
             continue;
          }
-       
+
          std::ostringstream libpath;
-         libpath << path << "/" << fileName;
+         libpath << cleanedPath << osgDB::getNativePathSeparator() << fileName;
          AddPlugin(libpath.str());
+         LOG_DEBUG("Loaded plugin: " + libpath.str());
       }
    }
 
@@ -147,7 +157,7 @@ namespace dtEntity
    {
       osgDB::FilePathList paths = osgDB::getDataFilePathList();
       paths.push_back(path);
-      
+
       std::string filename = GetSharedLibNameFromPluginName(libname);
       std::string p = osgDB::findFileInPath(filename, paths);
       if(p == "")
@@ -162,7 +172,7 @@ namespace dtEntity
    ////////////////////////////////////////////////////////////////////////////////
    std::set<ComponentType> ComponentPluginManager::AddPlugin(const std::string& abspath, bool saveWithScene)
    {
-      
+
       // store the name of this plugin
       std::string libName(osgDB::getSimpleFileName(abspath));
       libName.assign(osgDB::getNameLessAllExtensions(libName));
@@ -195,7 +205,7 @@ namespace dtEntity
       {
          mLoadedPlugins[libName] = saveWithScene;
       }
-      
+
       std::list<osg::ref_ptr<ComponentPluginFactory> > factories;
       LoadPluginFactories(libName, abspath, factories);
 
@@ -211,7 +221,7 @@ namespace dtEntity
             osg::ref_ptr<ComponentPluginFactory> factory = *i;
             assert(factory.valid());
 
-            ComponentType ctype = SID(factory->GetName());
+            ComponentType ctype = dtEntity::SID(factory->GetName());
 
             // store this type in output list
             result.insert(ctype);
@@ -219,7 +229,7 @@ namespace dtEntity
             LOG_DEBUG("Registered entity system " + dtEntity::GetStringFromSID(ctype));
             // insert factory into factory list
             AddFactory(factory);
-         }   
+         }
       }
 
       return result;
@@ -229,7 +239,7 @@ namespace dtEntity
    void ComponentPluginManager::LoadPluginFactories(const std::string& pluginName, const std::string& path, std::list<osg::ref_ptr<ComponentPluginFactory> >& factories)
    {
       // use library sharing manager to do the actual library loading
-      
+
       osg::ref_ptr<osgDB::DynamicLibrary> dynlib = osgDB::DynamicLibrary::loadLibrary(path);
       if(dynlib == NULL)
       {
@@ -237,7 +247,7 @@ namespace dtEntity
          return;
       }
       osgDB::DynamicLibrary::PROC_ADDRESS messagesaddr = dynlib->getProcAddress(std::string("dtEntityMessages_") + pluginName);
-      
+
       if (messagesaddr)
       {
          RegisterMessagesFn fn = (RegisterMessagesFn) messagesaddr;
@@ -258,7 +268,7 @@ namespace dtEntity
          std::list<ComponentPluginFactory*> faclist;
          // let plugin create its factories
          fn(faclist);
-         
+
          // store ref_ptr to library in factory, just so that it does not get
          // deleted
          if(!faclist.empty())
@@ -268,7 +278,7 @@ namespace dtEntity
             {
                osg::ref_ptr<ComponentPluginFactory> factory = *i;
                factory->SetLibrary(dynlib);
-               
+
                // cannot cleanly unload library yet
                dynlib->ref();
                factories.push_back(factory);
@@ -301,14 +311,13 @@ namespace dtEntity
       {
          return true;
       }
-      std::string tname = GetStringFromSID(ctype);
-      LOG_DEBUG("Starting entity system " + tname);
+      LOG_DEBUG("Starting entity system " << GetStringFromSID(ctype));
       ComponentPluginFactory* factory = GetPluginFactory(ctype);
-      
+
       if(factory == NULL)
       {
-         LOG_DEBUG("Cannot start entity system " 
-            + tname + std::string(": no factory found"));
+         LOG_DEBUG("Cannot start entity system "
+            << dtEntity::GetStringFromSID(ctype) << ": no factory found");
          return false;
       }
       // start all plugins this plugin depends on
@@ -327,7 +336,7 @@ namespace dtEntity
          // check if dependency can be fulfilled
          if(!FactoryExists(dependency))
          {
-            LOG_ERROR("Cannot start plugin " << tname << ": It depends on plugin "
+            LOG_ERROR("Cannot start plugin " << dtEntity::GetStringFromSID(ctype) << ": It depends on plugin "
              << GetStringFromSID(dependency) << " which was not found.");
             return false;
          }
@@ -348,13 +357,13 @@ namespace dtEntity
       {
          // call, although no properties were set yet
          es->Finished();
-         LOG_DEBUG("Created entity system of type " + GetStringFromSID(ctype));
+         LOG_DEBUG("Created entity system of type " << GetStringFromSID(ctype));
          em.AddEntitySystem(*es);
          return true;
       }
       else
       {
-         LOG_ERROR("Error starting entity system " + tname);
+         LOG_ERROR("Error starting entity system " << dtEntity::GetStringFromSID(ctype));
          return false;
       }
    }
@@ -370,15 +379,15 @@ namespace dtEntity
             dtEntity::EntitySystem* es = em.GetEntitySystem(ctype);
             if(es == NULL || !em.RemoveEntitySystem(*es))
             {
-               LOG_ERROR("Could not cleanly remove entity system " + GetStringFromSID(ctype));
+               LOG_ERROR("Could not cleanly remove entity system " << GetStringFromSID(ctype));
             }
          }
       }
    }
 
    ////////////////////////////////////////////////////////////////////////////////
-   PluginFunctionProxy::PluginFunctionProxy(CreatePluginFactoriesFn plgfunction, RegisterMessagesFn msgfunction) 
-   { 
+   PluginFunctionProxy::PluginFunctionProxy(CreatePluginFactoriesFn plgfunction, RegisterMessagesFn msgfunction)
+   {
       (msgfunction)(MessageFactory::GetInstance());
       std::list<dtEntity::ComponentPluginFactory*> l;
       (plgfunction)(l);

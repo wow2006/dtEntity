@@ -45,15 +45,18 @@ namespace dtEntityQtWidgets
    }
 
    ////////////////////////////////////////////////////////////////////////////////
-   EntityTreeModel::EntityTreeModel(dtEntity::EntityManager& em)
+   EntityTreeModel::EntityTreeModel(dtEntity::EntityManager& em, bool hideInvisible, bool showEntitySystems, bool showSpawners)
       : mRootItem(new EntityTreeItem(NULL, EntityTreeType::ROOT))
       , mEntityManager(&em)
+      , mHideInvisible(hideInvisible)
+      , mShowSpawners(showSpawners)
+      , mShowEntitySystems(showEntitySystems)
    {
 
       mMessagePump.RegisterForMessages(dtEntity::EntitySelectedMessage::TYPE, dtEntity::MessageFunctor(this, &EntityTreeModel::OnEntitySelected));
       mMessagePump.RegisterForMessages(dtEntity::EntityDeselectedMessage::TYPE, dtEntity::MessageFunctor(this, &EntityTreeModel::OnEntityDeselected));
-
       mMessagePump.RegisterForMessages(dtEntity::EntityAddedToSceneMessage::TYPE, dtEntity::MessageFunctor(this, &EntityTreeModel::OnEnterWorld));
+      mMessagePump.RegisterForMessages(dtEntity::EntityNameUpdatedMessage::TYPE, dtEntity::MessageFunctor(this, &EntityTreeModel::OnEntityNameUpdated));
       mMessagePump.RegisterForMessages(dtEntity::EntityRemovedFromSceneMessage::TYPE, dtEntity::MessageFunctor(this, &EntityTreeModel::OnLeaveWorld));
       mMessagePump.RegisterForMessages(dtEntity::MapBeginLoadMessage::TYPE, dtEntity::MessageFunctor(this, &EntityTreeModel::OnMapBeginAdd));
       mMessagePump.RegisterForMessages(dtEntity::MapUnloadedMessage::TYPE, dtEntity::MessageFunctor(this, &EntityTreeModel::OnMapRemoved));
@@ -65,20 +68,23 @@ namespace dtEntityQtWidgets
 
       mEnqueueFunctor = dtEntity::MessageFunctor(this, &EntityTreeModel::EnqueueMessage);
       
-
-      unsigned int size = mRootItem->childCount();
-      beginInsertRows(QModelIndex(), size, size);
-
-      mEntitySystemRootItem = new EntityTreeItem(mRootItem, EntityTreeType::ENTITYSYSTEM);
-      mEntitySystemRootItem->mName = tr("Entity Systems");
-      mRootItem->appendChild(mEntitySystemRootItem);
-      endInsertRows();
+      if(showEntitySystems)
+      {
+         unsigned int size = mRootItem->childCount();
+         beginInsertRows(QModelIndex(), size, size);
+         mEntitySystemRootItem = new EntityTreeItem(mRootItem, EntityTreeType::ENTITYSYSTEM);
+         mEntitySystemRootItem->mName = tr("Entity Systems");
+         mRootItem->appendChild(mEntitySystemRootItem);
+         endInsertRows();
+      }
    }
 
    ////////////////////////////////////////////////////////////////////////////////
    EntityTreeModel::~EntityTreeModel()
    {
       // TODO not thread safe, execute in app thread!
+
+
       mEntityManager->UnregisterForMessages(dtEntity::EntityAddedToSceneMessage::TYPE, mEnqueueFunctor);
       mEntityManager->UnregisterForMessages(dtEntity::EntityRemovedFromSceneMessage::TYPE, mEnqueueFunctor);
       mEntityManager->UnregisterForMessages(dtEntity::MapBeginLoadMessage::TYPE, mEnqueueFunctor);
@@ -164,6 +170,7 @@ namespace dtEntityQtWidgets
                stream << QString("%1").arg(item->mName);
                stream << QString("%1").arg(item->mMapName);
                break;
+            default:;
             }            
          }
       }
@@ -242,11 +249,11 @@ namespace dtEntityQtWidgets
    }
 
    ////////////////////////////////////////////////////////////////////////////////
-   void EntityTreeModel::EmitMoveMapToRow(const QString& mapname, int row)
+   void EntityTreeModel::EmitMoveMapToRow(const QString& mapname, unsigned int row)
    {
       unsigned int saveorder = 0;
       
-      for(int i = 0; i < mRootItem->childCount(); ++i)
+      for(unsigned int i = 0; i < mRootItem->childCount(); ++i)
       {
          if(i > row)
          {
@@ -293,6 +300,10 @@ namespace dtEntityQtWidgets
       const dtEntity::EntityAddedToSceneMessage& msg = 
          static_cast<const dtEntity::EntityAddedToSceneMessage&>(m);
 
+      if(!msg.GetVisibleInEntityList() && mHideInvisible)
+      {
+         return;
+      }
       QString mapName = msg.GetMapName().c_str();
       QString entityName = msg.GetEntityName().c_str();
       QString uniqueId = msg.GetUniqueId().c_str();
@@ -338,10 +349,33 @@ namespace dtEntityQtWidgets
    }
 
    ////////////////////////////////////////////////////////////////////////////////
+   void EntityTreeModel::OnEntityNameUpdated(const dtEntity::Message& m)
+   {
+      const dtEntity::EntityNameUpdatedMessage& msg =
+         static_cast<const dtEntity::EntityNameUpdatedMessage&>(m);
+      QModelIndex idx = GetEntityIndex(msg.GetAboutEntityId());
+
+      if(idx.isValid())
+      {
+         EntityTreeItem* item = GetInternal(idx);
+         if(item != NULL)
+         {
+            item->mName = msg.GetEntityName().c_str();
+            emit dataChanged (idx, idx);
+         }
+      }
+   }
+
+   ////////////////////////////////////////////////////////////////////////////////
    void EntityTreeModel::OnLeaveWorld(const dtEntity::Message& m)
    {
       const dtEntity::EntityRemovedFromSceneMessage& msg = 
          static_cast<const dtEntity::EntityRemovedFromSceneMessage&>(m);
+
+      if(!msg.GetVisibleInEntityList() && mHideInvisible)
+      {
+         return;
+      }
 
       dtEntity::EntityId eid = msg.GetAboutEntityId();
       EntityEntry entry;
@@ -365,7 +399,7 @@ namespace dtEntityQtWidgets
       if(parent.isValid())
       {
 
-         int i = 0;
+         unsigned int i = 0;
          bool found = false;
          EntityTreeItem* parentItem = GetInternal(parent);
          for(; i < parentItem->childCount(); ++i)
@@ -404,7 +438,7 @@ namespace dtEntityQtWidgets
       
       unsigned int row = mRootItem->childCount();
       
-      for(int i = 0; i < mRootItem->childCount(); ++i)
+      for(unsigned int i = 0; i < mRootItem->childCount(); ++i)
       {
          EntityTreeItem* item = mRootItem->child(i);
          if(item->GetItemType() == EntityTreeType::MAP && item->mSaveOrder >= msg.GetSaveOrder())
@@ -436,11 +470,15 @@ namespace dtEntityQtWidgets
    ////////////////////////////////////////////////////////////////////////////////
    void EntityTreeModel::OnEntitySystemAdded(const dtEntity::Message& m)
    {
+      if(!mShowEntitySystems)
+      {
+         return;
+      }
       const dtEntity::EntitySystemAddedMessage& msg = 
          static_cast<const dtEntity::EntitySystemAddedMessage&>(m);
       
       
-      for(int i = 0; i < mRootItem->childCount(); ++i)
+      for(unsigned int i = 0; i < mRootItem->childCount(); ++i)
       {
          EntityTreeItem* item = mRootItem->child(i);
          if(item->GetItemType() == EntityTreeType::ENTITYSYSTEM)
@@ -461,6 +499,10 @@ namespace dtEntityQtWidgets
    ////////////////////////////////////////////////////////////////////////////////
    void EntityTreeModel::OnEntitySystemRemoved(const dtEntity::Message& m)
    {
+      if(!mShowEntitySystems)
+      {
+         return;
+      }
       const dtEntity::EntitySystemRemovedMessage& msg = 
          static_cast<const dtEntity::EntitySystemRemovedMessage&>(m);
 
@@ -470,6 +512,10 @@ namespace dtEntityQtWidgets
    ////////////////////////////////////////////////////////////////////////////////
    void EntityTreeModel::OnSpawnerAdded(const dtEntity::Message& m)
    {
+      if(!mShowSpawners)
+      {
+         return;
+      }
       const dtEntity::SpawnerAddedMessage& msg = 
          static_cast<const dtEntity::SpawnerAddedMessage&>(m);
       
@@ -501,6 +547,10 @@ namespace dtEntityQtWidgets
    ////////////////////////////////////////////////////////////////////////////////
    void EntityTreeModel::OnSpawnerRemoved(const dtEntity::Message& m)
    {
+      if(!mShowSpawners)
+      {
+         return;
+      }
       const dtEntity::SpawnerRemovedMessage& msg = 
          static_cast<const dtEntity::SpawnerRemovedMessage&>(m);
 
@@ -536,7 +586,7 @@ namespace dtEntityQtWidgets
    ////////////////////////////////////////////////////////////////////////////////
    QModelIndex EntityTreeModel::GetMapIndex(const QString& mapName)
    {
-      for(int i = 0; i < mRootItem->childCount(); ++i)
+      for(unsigned int i = 0; i < mRootItem->childCount(); ++i)
       {
          EntityTreeItem* item = mRootItem->child(i);
          if(item->GetItemType() == EntityTreeType::MAP && item->mName == mapName)
@@ -550,12 +600,12 @@ namespace dtEntityQtWidgets
    ////////////////////////////////////////////////////////////////////////////////
    QModelIndex EntityTreeModel::GetEntityIndex(dtEntity::EntityId id)
    {
-      for(int i = 0; i < mRootItem->childCount(); ++i)
+      for(unsigned int i = 0; i < mRootItem->childCount(); ++i)
       {
          EntityTreeItem* mapitem = mRootItem->child(i);
          if(mapitem->GetItemType() == EntityTreeType::MAP)
          {
-            for(int j = 0; j < mapitem->childCount(); ++j)
+            for(unsigned int j = 0; j < mapitem->childCount(); ++j)
             {
                EntityTreeItem* entityitem = mapitem->child(j);
                if(entityitem->GetItemType() == EntityTreeType::ENTITY && entityitem->mEntityId == id)
@@ -576,7 +626,7 @@ namespace dtEntityQtWidgets
          return QModelIndex();
       }
 
-      for(int i = 0; i < item->childCount(); ++i)
+      for(unsigned int i = 0; i < item->childCount(); ++i)
       {
          EntityTreeItem* child = item->child(i);
          if(child->GetItemType() != EntityTreeType::MAP &&
@@ -602,7 +652,7 @@ namespace dtEntityQtWidgets
    ////////////////////////////////////////////////////////////////////////////////
    void EntityTreeModel::RemoveEntryFromRoot(const QString& name, EntityTreeType::e t)
    {
-      int i = 0;
+      unsigned int i = 0;
       bool found = false;
       for(; i < mRootItem->childCount(); ++i)
       {
@@ -770,6 +820,7 @@ namespace dtEntityQtWidgets
    ////////////////////////////////////////////////////////////////////////////////
    EntityTreeView::EntityTreeView(QWidget* parent)
       : QWidget(parent)
+      , mContextMenuFactory(new ContextMenuFactory())
    {
       Ui_EntityTree ui;
       ui.setupUi(this);
@@ -803,7 +854,7 @@ namespace dtEntityQtWidgets
       mAddChildSpawnerAction = new QAction(tr("Add Child Spawner"), this);
       connect(mAddChildSpawnerAction, SIGNAL(triggered(bool)), this, SLOT(OnAddChildSpawnerAction(bool)));
 
-      mDeleteEntityAction = new QAction(tr("Delete Entity"), this);
+      mDeleteEntityAction = new QAction(tr("Delete"), this);
       connect(mDeleteEntityAction, SIGNAL(triggered(bool)), this, SLOT(OnDeleteEntityAction(bool)));
 
       mJumpToEntityAction = new QAction(tr("Jump to"), this);
@@ -823,6 +874,14 @@ namespace dtEntityQtWidgets
 
       mSaveMapCopyAction = new QAction(tr("Save copy of map"), this);
       connect(mSaveMapCopyAction, SIGNAL(triggered(bool)), this, SLOT(OnSaveMapCopyAction(bool)));
+
+      mAddItemMenu.addAction(mAddNewMapAction);
+      mAddItemMenu.addAction(mAddExistingMapAction);
+
+      mAddItemMenuItemSelected.addAction(mAddNewMapAction);
+      mAddItemMenuItemSelected.addAction(mAddExistingMapAction);
+      mAddItemMenuItemSelected.addAction(mAddEntityAction);
+      mAddItemMenuItemSelected.addAction(mAddSpawnerAction);
 
    }
 
@@ -845,7 +904,7 @@ namespace dtEntityQtWidgets
    void EntityTreeView::OnDoubleClick(const QModelIndex& idx)
    {
       EntityTreeItem* item = GetInternal(idx);
-      dtEntity::MovementJumpToMessage msg;
+      dtEntity::MoveCameraToEntityMessage msg;
       msg.SetAboutEntityId(item->mEntityId);
       msg.SetDistance(50);
       msg.SetKeepCameraDirection(true);
@@ -853,46 +912,53 @@ namespace dtEntityQtWidgets
    }
 
    ////////////////////////////////////////////////////////////////////////////////
-   void EntityTreeView::ShowContextMenu(const QPoint& p)
+   void EntityTreeView::ContextMenuFactory::ShowContextMenu(const QModelIndex& index, EntityTreeView* view, const QPoint& position)
    {
 
+      EntityTreeItem* item = GetInternal(index);
+
+      switch(item->GetItemType() )
+      {
+         case EntityTreeType::ENTITY:
+         {
+            QMenu m;
+            m.addAction(view->GetJumpToEntityAction());
+            m.addAction(view->GetDeleteEntityAction());
+            m.exec(position);
+            break;
+         }
+         case EntityTreeType::SPAWNER:
+         {
+            QMenu m;
+            m.addAction(view->GetAddChildSpawnerAction());
+            m.addAction(view->GetDeleteSpawnerAction());
+            m.addAction(view->GetSpawnSpawnerAction());
+            m.exec(position);
+            break;
+         }
+         case EntityTreeType::MAP:
+         {
+            QMenu m;
+            m.addAction(view->GetAddEntityAction());
+            m.addAction(view->GetAddSpawnerAction());
+            m.addAction(view->GetUnloadMapAction());
+            m.addAction(view->GetSaveMapAction());
+            m.addAction(view->GetSaveMapCopyAction());
+            m.exec(position);
+         }
+         default: break;
+      }
+   }
+
+   ////////////////////////////////////////////////////////////////////////////////
+   void EntityTreeView::ShowContextMenu(const QPoint& p)
+   {
+      QPoint mapped = mTreeView->mapToGlobal(p);
       QModelIndex index = mTreeView->indexAt(p);
       if(index.isValid()) 
       {
          mContextMenuSelectedIndex = index;
-         EntityTreeItem* item = GetInternal(index);
-         
-         switch(item->GetItemType() )
-         {
-            case EntityTreeType::ENTITY:
-            {
-               QMenu menu(this);
-               menu.addAction(mJumpToEntityAction);
-               menu.addAction(mDeleteEntityAction);
-               menu.exec(mTreeView->mapToGlobal(p));
-               break;
-            }
-            case EntityTreeType::SPAWNER:
-            {
-               QMenu menu(this);
-               menu.addAction(mAddChildSpawnerAction);
-               menu.addAction(mDeleteSpawnerAction);
-               menu.addAction(mSpawnSpawnerAction);
-               menu.exec(mTreeView->mapToGlobal(p));
-               break;
-            }
-            case EntityTreeType::MAP:
-            {
-               QMenu menu(this);
-               menu.addAction(mAddEntityAction);
-               menu.addAction(mAddSpawnerAction);
-               menu.addAction(mUnloadMapAction);
-               menu.addAction(mSaveMapAction);
-               menu.addAction(mSaveMapCopyAction);
-               menu.exec(mTreeView->mapToGlobal(p));
-            }
-            default: break;
-         }      
+         mContextMenuFactory->ShowContextMenu(index, this, mapped);
       }   
    }
 
@@ -903,8 +969,9 @@ namespace dtEntityQtWidgets
       QModelIndex sel = mTreeView->selectionModel()->currentIndex();
       if(sel.isValid())
       {
-         mapname = GetInternal(sel)->mMapName;
-         return true;
+         EntityTreeItem* item = GetInternal(sel);
+         mapname = item->mMapName;
+         return item->GetItemType() == EntityTreeType::MAP;
       }
       return false;
    }
@@ -913,15 +980,14 @@ namespace dtEntityQtWidgets
    void EntityTreeView::OnAddItemButton()
    {      
       QString mapname;
-      QMenu menu(this);
-      menu.addAction(mAddNewMapAction);
-      menu.addAction(mAddExistingMapAction);
       if(IsSingleMapItemSelected(mapname))
       {
-         menu.addAction(mAddEntityAction);
-         menu.addAction(mAddSpawnerAction);
-      }      
-      menu.exec(mAddItemButton->mapToGlobal(QPoint(0, mAddItemButton->height())));
+         mAddItemMenuItemSelected.exec(mAddItemButton->mapToGlobal(QPoint(0, mAddItemButton->height())));
+      }
+      else
+      {
+         mAddItemMenu.exec(mAddItemButton->mapToGlobal(QPoint(0, mAddItemButton->height())));
+      }
    }
 
    ////////////////////////////////////////////////////////////////////////////////
@@ -954,6 +1020,7 @@ namespace dtEntityQtWidgets
          {
             if(j->column() != 0) continue;
             EntityTreeItem* item = GetInternal(*j);
+
             switch(item->GetItemType())
             {
             case EntityTreeType::ENTITY: 
@@ -1024,14 +1091,43 @@ namespace dtEntityQtWidgets
    ////////////////////////////////////////////////////////////////////////////////
    void EntityTreeView::OnAddNewMapAction(bool)
    {
+
       QSettings settings;
+      QString currpath = settings.value("AssetSelectorCurrentDataPath", "").toString();
+
       QStringList paths = settings.value("DataPaths", "ProjectAssets").toStringList();
 
-      AssetCreationDialog dialog(paths, "maps/MyMap", ".dtemap");
-
-      if(dialog.exec() == QDialog::Accepted)
+      QList<QUrl> urls;
+      foreach(QString path, paths)
       {
-         emit CreateNewMap(dialog.GetDataPath(), dialog.GetMapPath());
+         urls << QUrl::fromLocalFile(path);
+      }
+
+      QFileDialog dialog(this, tr("Create Map"), currpath, tr("Maps (*.dtemap)"));
+      dialog.setSidebarUrls(urls);
+      dialog.setFileMode(QFileDialog::AnyFile);
+
+      if(dialog.exec()) {
+         QString fileName = QDir::fromNativeSeparators(dialog.selectedFiles().first());
+
+         foreach(QString path, paths)
+         {
+            QString nativePath = QDir::fromNativeSeparators(path);
+            if(fileName.startsWith(nativePath))
+            {
+               QString mappath = fileName.right(fileName.size() - path.size());
+               if(mappath.startsWith("/"))
+               {
+                  mappath = mappath.mid(1);
+               }
+               emit CreateNewMap(nativePath, mappath);
+               return;
+            }
+         }
+         QMessageBox msgBox;
+         msgBox.setText("Cannot add map, not in a data path folder!");
+         msgBox.exec();
+
       }
    }
 
@@ -1147,7 +1243,7 @@ namespace dtEntityQtWidgets
       {
          EntityTreeItem* item = GetInternal(mContextMenuSelectedIndex);
 
-         dtEntity::MovementJumpToMessage msg;
+         dtEntity::MoveCameraToEntityMessage msg;
          msg.SetAboutEntityId(item->mEntityId);
          msg.SetDistance(50);
          msg.SetKeepCameraDirection(true);
@@ -1230,6 +1326,7 @@ namespace dtEntityQtWidgets
    ////////////////////////////////////////////////////////////////////////////////
    void EntityTreeView::EntityWasSelected(const QModelIndex& idx)
    {
+      EntityTreeItem* item = GetInternal(idx);
       mTreeView->selectionModel()->select(idx, QItemSelectionModel::Select | QItemSelectionModel::Rows);
    }
 
@@ -1263,6 +1360,7 @@ namespace dtEntityQtWidgets
       em.RegisterForMessages(dtEntity::EntitySelectedMessage::TYPE, funct, "EntityTreeController::EntitySelected");
       em.RegisterForMessages(dtEntity::EntityDeselectedMessage::TYPE, funct, "EntityTreeController::EntityDeselected");
       em.RegisterForMessages(dtEntity::EntityAddedToSceneMessage::TYPE, funct, "EntityTreeController::EnqueueMessage");
+      em.RegisterForMessages(dtEntity::EntityNameUpdatedMessage::TYPE, funct, "EntityTreeController::EnqueueMessage");
       em.RegisterForMessages(dtEntity::EntityRemovedFromSceneMessage::TYPE, funct, "EntityTreeController::EnqueueMessage");
       em.RegisterForMessages(dtEntity::MapBeginLoadMessage::TYPE, funct, "EntityTreeController::EnqueueMessage");
       em.RegisterForMessages(dtEntity::MapUnloadedMessage::TYPE, funct, "EntityTreeController::EnqueueMessage");
@@ -1296,79 +1394,81 @@ namespace dtEntityQtWidgets
       connect(model, SIGNAL(EntityWasDeselected(QModelIndex)), view, SLOT(EntityWasDeselected(QModelIndex)));
       connect(model, SIGNAL(MoveEntityToMap(dtEntity::EntityId, QString)), this, SLOT(OnMoveEntityToMap(dtEntity::EntityId, QString)));
       connect(model, SIGNAL(MoveSpawnerToMap(QString, QString, QString)), this, SLOT(OnMoveSpawnerToMap(QString, QString, QString)));
-      connect(model, SIGNAL(MoveMapToRow(QString, int)), this, SLOT(OnMoveMapToRow(QString, int)));
+      connect(model, SIGNAL(MoveMapToRow(QString, unsigned int)), this, SLOT(OnMoveMapToRow(QString, unsigned int)));
       connect(model, SIGNAL(SceneLoaded()), view, SLOT(OnSceneLoaded()));
 
       dtEntity::MapSystem* mtsystem;
       bool success = mEntityManager->GetEntitySystem(dtEntity::MapComponent::TYPE, mtsystem);
-      assert(success);
-
-      // add existing maps to model
-      {      
-         std::vector<std::string> mapnames = mtsystem->GetLoadedMaps();
-         std::vector<std::string>::iterator i;
-         for(i = mapnames.begin(); i != mapnames.end(); ++i)
-         {            
-            dtEntity::MapLoadedMessage m;
-            m.SetMapPath(*i);
-            model->EnqueueMessage(m);
-         }
-      }
-
-      // add existing entities to model
+      if(success)
       {
-         std::vector<dtEntity::EntityId> eids;
-         mEntityManager->GetEntityIds(eids);
-
-         std::vector<dtEntity::EntityId>::iterator i;
-         for(i = eids.begin(); i != eids.end(); ++i)
          {
-            dtEntity::EntityAddedToSceneMessage m;
-            m.SetAboutEntityId(*i);
-            dtEntity::MapComponent* mc;
-            if(mEntityManager->GetComponent(*i, mc))
-            {
-               m.SetEntityName(mc->GetEntityName());
-               m.SetUniqueId(mc->GetUniqueId());
-               m.SetMapName(mc->GetMapName());
-            }
-            model->EnqueueMessage(m);
-         }
-      }    
+            // add existing maps to model
 
-      // add existing entity systems to model
-      {
-         std::vector<const dtEntity::EntitySystem*> esystems;
-         mEntityManager->GetEntitySystems(esystems);
-         std::vector<const dtEntity::EntitySystem*>::iterator i;
-         for(i = esystems.begin(); i != esystems.end(); ++i)
-         {
-            if((*i)->GetAllProperties().size() != 0)
+            std::vector<std::string> mapnames = mtsystem->GetLoadedMaps();
+            std::vector<std::string>::iterator i;
+            for(i = mapnames.begin(); i != mapnames.end(); ++i)
             {
-               dtEntity::EntitySystemAddedMessage m;
-               m.SetComponentType((*i)->GetComponentType());
-               m.SetComponentTypeString(dtEntity::GetStringFromSID((*i)->GetComponentType()));
+               dtEntity::MapLoadedMessage m;
+               m.SetMapPath(*i);
                model->EnqueueMessage(m);
             }
          }
-      }
 
-      // add existing spawners to model
-      {
-         std::map<std::string, dtEntity::Spawner*> spawners;
-         mtsystem->GetAllSpawners(spawners);
-         std::map<std::string, dtEntity::Spawner*>::const_iterator i;
-         for(i = spawners.begin(); i != spawners.end(); ++i)
+         // add existing entities to model
          {
-            dtEntity::Spawner* spawner = i->second;
-            dtEntity::SpawnerAddedMessage msg;
-            msg.SetName(spawner->GetName());
-            msg.SetMapName(spawner->GetMapName());
-            if(spawner->GetParent())
+            std::vector<dtEntity::EntityId> eids;
+            mEntityManager->GetEntityIds(eids);
+
+            std::vector<dtEntity::EntityId>::iterator i;
+            for(i = eids.begin(); i != eids.end(); ++i)
             {
-               msg.SetParentName(spawner->GetParent()->GetName());
+               dtEntity::EntityAddedToSceneMessage m;
+               m.SetAboutEntityId(*i);
+               dtEntity::MapComponent* mc;
+               if(mEntityManager->GetComponent(*i, mc))
+               {
+                  m.SetEntityName(mc->GetEntityName());
+                  m.SetUniqueId(mc->GetUniqueId());
+                  m.SetMapName(mc->GetMapName());
+               }
+               model->EnqueueMessage(m);
             }
-            model->EnqueueMessage(msg);
+         }
+
+         // add existing entity systems to model
+         {
+            std::vector<const dtEntity::EntitySystem*> esystems;
+            mEntityManager->GetEntitySystems(esystems);
+            std::vector<const dtEntity::EntitySystem*>::iterator i;
+            for(i = esystems.begin(); i != esystems.end(); ++i)
+            {
+               if((*i)->GetAllProperties().size() != 0)
+               {
+                  dtEntity::EntitySystemAddedMessage m;
+                  m.SetComponentType((*i)->GetComponentType());
+                  m.SetComponentTypeString(dtEntity::GetStringFromSID((*i)->GetComponentType()));
+                  model->EnqueueMessage(m);
+               }
+            }
+         }
+
+         // add existing spawners to model
+         {
+            std::map<std::string, dtEntity::Spawner*> spawners;
+            mtsystem->GetAllSpawners(spawners);
+            std::map<std::string, dtEntity::Spawner*>::const_iterator i;
+            for(i = spawners.begin(); i != spawners.end(); ++i)
+            {
+               dtEntity::Spawner* spawner = i->second;
+               dtEntity::SpawnerAddedMessage msg;
+               msg.SetName(spawner->GetName());
+               msg.SetMapName(spawner->GetMapName());
+               if(spawner->GetParent())
+               {
+                  msg.SetParentName(spawner->GetParent()->GetName());
+               }
+               model->EnqueueMessage(msg);
+            }
          }
       }
    }
@@ -1571,6 +1671,7 @@ namespace dtEntityQtWidgets
       msg1.SetEntityName(mapcomp->GetEntityName());
       msg1.SetUniqueId(mapcomp->GetUniqueId());
       msg1.SetMapName(mapcomp->GetMapName());
+      msg1.SetVisibleInEntityList(mapcomp->GetVisibleInEntityList());
       mModel->EnqueueMessage(msg1);
       
       mapcomp->SetMapName(mapname.toStdString());
@@ -1581,6 +1682,7 @@ namespace dtEntityQtWidgets
       msg2.SetEntityName(mapcomp->GetEntityName());
       msg2.SetUniqueId(mapcomp->GetUniqueId());
       msg2.SetMapName(mapcomp->GetMapName());
+      msg2.SetVisibleInEntityList(mapcomp->GetVisibleInEntityList());
       mModel->EnqueueMessage(msg2);
    }
 
@@ -1623,7 +1725,7 @@ namespace dtEntityQtWidgets
    }
 
    ////////////////////////////////////////////////////////////////////////////////
-   void EntityTreeController::OnMoveMapToRow(const QString& mapname, int saveorder)
+   void EntityTreeController::OnMoveMapToRow(const QString& mapname, unsigned int saveorder)
    {
       dtEntity::MapSystem* mapsys;
       mEntityManager->GetEntitySystem(dtEntity::MapComponent::TYPE, mapsys);
@@ -1679,7 +1781,7 @@ namespace dtEntityQtWidgets
       std::vector<std::string> maps = mapsys->GetLoadedMaps();
       for(std::vector<std::string>::iterator k = maps.begin(); k != maps.end(); ++k)
       {
-         int oldorder = mapsys->GetMapSaveOrder(*k);
+         unsigned int oldorder = mapsys->GetMapSaveOrder(*k);
          if(oldorder >= saveorder)
          {
             mapsys->SetMapSaveOrder(*k, oldorder + 1);

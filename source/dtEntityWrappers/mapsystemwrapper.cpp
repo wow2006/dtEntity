@@ -69,7 +69,15 @@ namespace dtEntityWrappers
       dtEntity::EntityId id = ms->GetEntityIdByUniqueId(ToStdString(args[0]));
       return Integer::New(id);
    }
-   
+
+
+   ////////////////////////////////////////////////////////////////////////////////
+   Handle<Value> MSIsSpawnOf(const Arguments& args)
+   {
+      dtEntity::MapSystem* ms = UnwrapMapSystem(args.This());
+      return Boolean::New(ms->IsSpawnOf(args[0]->Uint32Value(), ToStdString(args[1])));
+   }
+
    ////////////////////////////////////////////////////////////////////////////////
    Handle<Value> MSLoadMap(const Arguments& args)
    {
@@ -172,19 +180,58 @@ namespace dtEntityWrappers
    {
       HandleScope scope;
       dtEntity::MapSystem* ms = UnwrapMapSystem(args.This());
-      std::string name = ToStdString(args[0]);
-      std::string mapname = ToStdString(args[1]);
-      Handle<Object> obj = Handle<Object>::Cast(args[2]);
-      dtEntity::Spawner* parent = NULL;
-      if(args.Length() > 3)
+
+      if(args.Length() != 1)
       {
-         std::string parentname = ToStdString(args[3]);
-         ms->GetSpawner(parentname, parent);
+         return ThrowError("Usage: addSpawner({components, name, guicategory, mapname, addtospawnerstore, iconpath})");
+      }
+
+      Handle<Object> obj = Handle<Object>::Cast(args[0]);
+
+      Handle<Value> vname = obj->Get(String::New("name"));
+      Handle<Value> vcomponents = obj->Get(String::New("components"));
+
+      if(vname.IsEmpty() || vcomponents.IsEmpty())
+      {
+         return ThrowError("Usage: addSpawner({components, name, guicategory, mapname, addtospawnerstore, iconpath, parentname})");
+      }
+
+      Handle<Value> vguicategory = obj->Get(String::New("guicategory"));
+      Handle<Value> vmapname = obj->Get(String::New("mapname"));
+      Handle<Value> vaddtospawnerstore = obj->Get(String::New("addtospawnerstore"));
+      Handle<Value> viconpath = obj->Get(String::New("iconpath"));
+      Handle<Value> vparentname = obj->Get(String::New("parentname"));
+
+      std::string name = ToStdString(vname);
+      std::string mapname = vmapname.IsEmpty() ? "" : ToStdString(vmapname);
+
+      Handle<Object> components = Handle<Object>::Cast(vcomponents);
+
+      dtEntity::Spawner* parent = NULL;
+
+      if(!vparentname.IsEmpty())
+      {
+         ms->GetSpawner(ToStdString(vparentname), parent);
       }
 
       osg::ref_ptr<dtEntity::Spawner> spawner = new dtEntity::Spawner(name, mapname, parent);
-      
-      Handle<Array> keys = obj->GetPropertyNames();
+
+      if(!vguicategory.IsEmpty())
+      {
+         spawner->SetGUICategory(ToStdString(vguicategory));
+      }
+
+      if(!vaddtospawnerstore.IsEmpty())
+      {
+         spawner->SetAddToSpawnerStore(vaddtospawnerstore->BooleanValue());
+      }
+
+      if(!viconpath.IsEmpty())
+      {
+         spawner->SetIconPath(ToStdString(viconpath));
+      }
+
+      Handle<Array> keys = components->GetPropertyNames();
       
       for(unsigned int i = 0; i < keys->Length(); ++i)
       {
@@ -195,7 +242,7 @@ namespace dtEntityWrappers
 
          if(ms->GetEntityManager().HasEntitySystem(ctype))
          {
-            Handle<Value> val = obj->Get(key);
+            Handle<Value> val = components->Get(key);
             if(val->IsObject())
             {
                Handle<Object> compobj = Handle<Object>::Cast(val);
@@ -207,7 +254,7 @@ namespace dtEntityWrappers
                   Handle<Value> compkey = compkeys->Get(Integer::New(j));
                   std::string compkeystr = ToStdString(compkey);
                   Handle<Value> compval = compobj->Get(compkey);
-                  dtEntity::Property* prop = Convert(compval);
+                  dtEntity::Property* prop = ConvertValueToProperty(compval);
                   props.AddProperty(dtEntity::SIDHash(compkeystr), *prop);
                   delete prop;
                }
@@ -241,6 +288,22 @@ namespace dtEntityWrappers
       HandleScope scope;
       Handle<Object> obj = Object::New();
 
+      if(spawner->GetParent())
+      {
+         obj->Set(String::New("parent"), String::New(spawner->GetParent()->GetName().c_str()));
+      }
+      else
+      {
+         obj->Set(String::New("parent"), String::New(""));
+      }
+
+      obj->Set(String::New("name"), String::New(spawner->GetName().c_str()));
+      obj->Set(String::New("guicategory"), String::New(spawner->GetGUICategory().c_str()));
+      obj->Set(String::New("mapname"), String::New(spawner->GetMapName().c_str()));
+      obj->Set(String::New("addtospawnerstore"), Boolean::New(spawner->GetAddToSpawnerStore()));
+      obj->Set(String::New("iconpath"), String::New(spawner->GetIconPath().c_str()));
+
+      Handle<Object> comps = Object::New();
       dtEntity::Spawner::ComponentProperties props;
       spawner->GetAllComponentProperties(props);
       dtEntity::Spawner::ComponentProperties::iterator i;
@@ -257,15 +320,32 @@ namespace dtEntityWrappers
          {
             std::string propname = dtEntity::GetStringFromSID(j->first);
             const dtEntity::Property* prop = j->second;
-            jscomp->Set(ToJSString(propname), PropToVal(args.Holder()->CreationContext(), prop));
+            jscomp->Set(ToJSString(propname), ConvertPropertyToValue(args.Holder()->CreationContext(), prop));
          }
          
-         obj->Set(ToJSString(compname), jscomp);
+         comps->Set(ToJSString(compname), jscomp);
       }
-      
+      obj->Set(String::New("components"), comps);
       return scope.Close(obj);
    }
-   
+
+   ////////////////////////////////////////////////////////////////////////////////
+   Handle<Value> MSGetSpawnerCreatedEntities(const Arguments& args)
+   {
+      dtEntity::MapSystem* ms = UnwrapMapSystem(args.This());
+      std::string spawnername = ToStdString(args[0]);
+      bool recursive = args[1]->BooleanValue();
+
+      std::vector<dtEntity::EntityId> ids;
+      ms->GetSpawnerCreatedEntities(spawnername, ids, recursive);
+      HandleScope scope;
+      Handle<Array> arr = Array::New();
+      for(unsigned int i = 0; i < ids.size(); ++i)
+      {
+         arr->Set(i, Integer::New(ids[i]));
+      }
+      return scope.Close(arr);
+   }
 
    ////////////////////////////////////////////////////////////////////////////////
    Handle<Value> MSGetAllSpawnerNames(const Arguments& args)
@@ -331,6 +411,7 @@ namespace dtEntityWrappers
 
       proto->Set("addEmptyMap", FunctionTemplate::New(MSAddEmptyMap));
       proto->Set("getEntityIdByUniqueId", FunctionTemplate::New(MSGetEntityIdByUniqueId));
+      proto->Set("isSpawnOf", FunctionTemplate::New(MSIsSpawnOf));
       proto->Set("toString", FunctionTemplate::New(MSToString));
       proto->Set("loadMap", FunctionTemplate::New(MSLoadMap));
       proto->Set("loadScene", FunctionTemplate::New(MSLoadScene));
@@ -343,6 +424,7 @@ namespace dtEntityWrappers
       proto->Set("addSpawner", FunctionTemplate::New(MSAddSpawner));
       proto->Set("deleteSpawner", FunctionTemplate::New(MSDeleteSpawner));
       proto->Set("getSpawner", FunctionTemplate::New(MSGetSpawner));
+      proto->Set("getSpawnerCreatedEntities", FunctionTemplate::New(MSGetSpawnerCreatedEntities));
       proto->Set("getAllSpawnerNames", FunctionTemplate::New(MSGetAllSpawnerNames));
       proto->Set("getEntitiesInMap", FunctionTemplate::New(MSGetEntitiesInMap));
       

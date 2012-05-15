@@ -1,5 +1,5 @@
 /*
-* Delta3D Open Source Game and Simulation Engine
+* dtEntity Game and Simulation Engine
 *
 * This library is free software; you can redistribute it and/or modify it under
 * the terms of the GNU Lesser General Public License as published by the Free
@@ -26,23 +26,25 @@
 #include <dtEntity/entity.h>
 #include <dtEntity/entitymanager.h>
 #include <dtEntity/applicationcomponent.h>
+#include <dtEntity/transformcomponent.h>
 #include <osg/Camera>
 #include <assert.h>
 #include <iostream>
 
 namespace dtEntity
 {
+   ////////////////////////////////////////////////////////////////////////////////
+   ////////////////////////////////////////////////////////////////////////////////
+   const StringId SoundComponent::TYPE(dtEntity::SID("Sound"));
+   const StringId SoundComponent::SoundPathId(dtEntity::SID("SoundPath"));
+   const StringId SoundComponent::AutoPlayId(dtEntity::SID("AutoPlay"));
+   const StringId SoundComponent::GainId(dtEntity::SID("Gain"));
+   const StringId SoundComponent::PitchId(dtEntity::SID("Pitch"));
+   const StringId SoundComponent::RollOffId(dtEntity::SID("RollOff"));
+   const StringId SoundComponent::LoopingId(dtEntity::SID("Looping"));
    
-   const StringId SoundComponent::TYPE(SID("Sound"));
-   const StringId SoundComponent::SoundPathId(SID("SoundPath"));
-   const StringId SoundComponent::AutoPlayId(SID("AutoPlay"));
-   const StringId SoundComponent::GainId(SID("Gain"));
-   const StringId SoundComponent::PitchId(SID("Pitch"));
-   const StringId SoundComponent::RollOffId(SID("RollOff"));
-   const StringId SoundComponent::LoopingId(SID("Looping"));
    
-   
-   ////////////////////////////////////////////////////////////////////////////
+   ////////////////////////////////////////////////////////////////////////////////
    SoundComponent::SoundComponent()
       : mOwner(NULL)
    {
@@ -60,13 +62,13 @@ namespace dtEntity
       mRollOff.Set(1.0f);
    }
 
-   ////////////////////////////////////////////////////////////////////////////
+   ////////////////////////////////////////////////////////////////////////////////
    SoundComponent::~SoundComponent()
    {
       FreeSound();
    }
 
-   ////////////////////////////////////////////////////////////////////////////
+   ////////////////////////////////////////////////////////////////////////////////
    void SoundComponent::Finished()
    {
       FreeSound();
@@ -90,7 +92,7 @@ namespace dtEntity
       }      
    }
 
-   ////////////////////////////////////////////////////////////////////////////
+   ////////////////////////////////////////////////////////////////////////////////
    void SoundComponent::Update(float dt)
    {
       if(!IsPlaying() || mOwner == NULL)
@@ -115,7 +117,7 @@ namespace dtEntity
 
    }
 
-   ////////////////////////////////////////////////////////////////////////////
+   ////////////////////////////////////////////////////////////////////////////////
    void SoundComponent::FreeSound()
    {
       if(mCurrentSound.valid())
@@ -129,13 +131,13 @@ namespace dtEntity
       }
    }
 
-   ////////////////////////////////////////////////////////////////////////////
+   ////////////////////////////////////////////////////////////////////////////////
    void SoundComponent::SetSoundPath(const std::string& p) 
    {  
       mSoundPath.Set(p);      
    }
 
-   ////////////////////////////////////////////////////////////////////////////
+   ////////////////////////////////////////////////////////////////////////////////
    void SoundComponent::PlaySound() 
    {  
       if(mCurrentSound != NULL)
@@ -144,7 +146,7 @@ namespace dtEntity
       }
    }
 
-   ////////////////////////////////////////////////////////////////////////////
+   ////////////////////////////////////////////////////////////////////////////////
    void SoundComponent::StopSound() 
    {  
       if(mCurrentSound != NULL)
@@ -153,7 +155,7 @@ namespace dtEntity
       }
    }
 
-   ///////////////////////////////////////////////////////////////////
+   ////////////////////////////////////////////////////////////////////////////////
    bool SoundComponent::IsPlaying() const
    {
       if(!mCurrentSound.valid())
@@ -163,10 +165,13 @@ namespace dtEntity
       return (mCurrentSound->IsPlaying() != 0);
    }
 
-   ///////////////////////////////////////////////////////////////////
-   const StringId SoundSystem::ListenerGainId(SID("ListenerGain"));
-   const StringId SoundSystem::ListenerLinkToCameraId(SID("ListenerLinkToCamera"));
+   ////////////////////////////////////////////////////////////////////////////////
+   ////////////////////////////////////////////////////////////////////////////////
+   const StringId SoundSystem::TYPE(dtEntity::SID("Sound"));
+   const StringId SoundSystem::ListenerGainId(dtEntity::SID("ListenerGain"));
+   const StringId SoundSystem::ListenerLinkToCameraId(dtEntity::SID("ListenerLinkToCamera"));
 
+   ////////////////////////////////////////////////////////////////////////////////
    SoundSystem::SoundSystem(EntityManager& em)
       : DefaultEntitySystem<SoundComponent>(em)
       , mListenerLinkToCamera(true)
@@ -192,13 +197,13 @@ namespace dtEntity
 
    }
 
-   ////////////////////////////////////////////////////////////////////////////
+   ////////////////////////////////////////////////////////////////////////////////
    SoundSystem::~SoundSystem()
    {
       dtEntity::AudioManager::DestroyInstance();
    }
 
-   ////////////////////////////////////////////////////////////////////////////
+   ////////////////////////////////////////////////////////////////////////////////
    void SoundSystem::Finished()
    {
       if (mListenerLinkToCamera.Get())
@@ -210,7 +215,7 @@ namespace dtEntity
       dtEntity::AudioManager::GetListener()->SetGain(mListenerGain.Get());
    }
 
-   ////////////////////////////////////////////////////////////////////////////
+   ////////////////////////////////////////////////////////////////////////////////
    void SoundSystem::OnRemoveFromEntityManager(dtEntity::EntityManager& em)
    {
       for(ComponentStore::iterator i = mComponents.begin(); i != mComponents.end(); ++i)
@@ -225,7 +230,7 @@ namespace dtEntity
 
    }
 
-   ////////////////////////////////////////////////////////////////////////////
+   ////////////////////////////////////////////////////////////////////////////////
    void SoundSystem::OnEnterWorld(const Message& msg)
    {
       EntityId eid = (EntityId)msg.GetUInt(EntityAddedToSceneMessage::AboutEntityId);
@@ -239,7 +244,7 @@ namespace dtEntity
       }
    }
 
-   ////////////////////////////////////////////////////////////////////////////
+   ////////////////////////////////////////////////////////////////////////////////
    void SoundSystem::OnLeaveWorld(const Message& msg)
    {
       EntityId eid = (EntityId)msg.GetUInt(EntityRemovedFromSceneMessage::AboutEntityId);
@@ -250,7 +255,7 @@ namespace dtEntity
       }
    }
 
-   ////////////////////////////////////////////////////////////////////////////
+   ////////////////////////////////////////////////////////////////////////////////
    void SoundSystem::OnWindowClosed(const Message& m)
    {
       dtEntity::ApplicationSystem* appSys;
@@ -265,9 +270,18 @@ namespace dtEntity
       }
    }
 
-   ////////////////////////////////////////////////////////////////////////////
+   ////////////////////////////////////////////////////////////////////////////////
    void SoundSystem::OnTick(const Message& msg)
    {
+      // shortcut
+      if(mComponents.empty())
+      {
+         return;
+      }
+
+      // 2 - update sound component (set position, flush commands)
+      const dtEntity::TickMessage& tm = static_cast<const dtEntity::TickMessage&>(msg);
+
       if (mListenerLinkToCamera.Get())
       {
 	      // copy current camera position to listener...
@@ -286,14 +300,12 @@ namespace dtEntity
             soundObj->SetMustLoadBuffer(false);
          }
 
-         // 2 - update sound component (set position, flush commands)
-         float dt = msg.GetFloat(dtEntity::TickMessage::DeltaSimTimeId);
-         currSoundComp->Update(dt);
+         currSoundComp->Update(tm.GetDeltaSimTime());
       }
 
    }
 
-   ////////////////////////////////////////////////////////////////////////////
+   ////////////////////////////////////////////////////////////////////////////////
    void SoundSystem::SetSoundPath(EntityId eid, const std::string& p)
    {
 
@@ -304,7 +316,7 @@ namespace dtEntity
       }
    }
 
-   ////////////////////////////////////////////////////////////////////////////
+   ////////////////////////////////////////////////////////////////////////////////
    void SoundSystem::PlaySound(EntityId eid)
    {
       SoundComponent* sc = GetComponent(eid);
@@ -314,7 +326,7 @@ namespace dtEntity
       }
    }
 
-   ////////////////////////////////////////////////////////////////////////////
+   ////////////////////////////////////////////////////////////////////////////////
    void SoundSystem::StopSound(EntityId eid)
    {
       SoundComponent* sc = GetComponent(eid);
@@ -324,7 +336,7 @@ namespace dtEntity
       }
    }
 
-   //////////////////////////////////////////////////////////////////////////
+   ////////////////////////////////////////////////////////////////////////////////
    void SoundSystem::CopyCamTransformToListener()
    {
       dtEntity::ApplicationSystem* pAppSys;

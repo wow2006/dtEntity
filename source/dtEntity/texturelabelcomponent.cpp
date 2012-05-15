@@ -23,7 +23,6 @@
 
 #include <dtEntity/basemessages.h>
 #include <dtEntity/nodemasks.h>
-#include <dtEntity/osgcomponents.h>
 #include <dtEntity/stringid.h>
 #include <osg/BlendFunc>
 #include <osg/Geode>
@@ -196,6 +195,7 @@ namespace dtEntity
   
    ////////////////////////////////////////////////////////////////////////////
    ////////////////////////////////////////////////////////////////////////////
+   const dtEntity::StringId TextureLabelSystem::TYPE(dtEntity::SID("TextureLabel"));
    const dtEntity::StringId TextureLabelSystem::EnabledId(dtEntity::SID("Enabled"));
 
    TextureLabelSystem::TextureLabelSystem(dtEntity::EntityManager& em)

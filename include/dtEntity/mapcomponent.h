@@ -73,15 +73,14 @@ namespace dtEntity
 
       virtual ComponentType GetType() const { return TYPE; }
 
-      virtual void OnPropertyChanged(StringId propname, Property& prop);
       virtual void OnAddedToEntity(Entity& entity) { mOwner = &entity; }
 
       /**
        * string identifier of entity. Does not need to be unique. Mainly used
        * for debugging purposes
        */
-      std::string GetEntityName() const { return mEntityName.Get(); }
-      void SetEntityName(const std::string& v) { mEntityName.Set(v); }
+      std::string GetEntityName() const;
+      void SetEntityName(const std::string& v);
 
       /**
        * If entity was created from a spawner then this is set to the spawners name.
@@ -89,6 +88,12 @@ namespace dtEntity
        */
       std::string GetSpawnerName() const;
       void SetSpawnerName(const std::string& v);
+
+      /**
+       * @return the spawner the entity was created from or NULL
+       * if entity was not created from spawner
+       */
+      Spawner* GetSpawner() const;
    
       /**
        * name of map that entity was loaded from and that it will be stored to
@@ -110,12 +115,13 @@ namespace dtEntity
       bool GetVisibleInEntityList() const { return mVisibleInEntityList.Get(); }
 
    private:
-      StringProperty mEntityName;
+      DynamicStringProperty mEntityName;
       StringProperty mMapName;
       DynamicStringProperty mSpawnerNameProp;
       DynamicStringProperty mUniqueId;
       Spawner* mSpawner;
       std::string mUniqueIdStr;
+      std::string mEntityNameStr;
       BoolProperty mSaveWithMap;
       BoolProperty mVisibleInEntityList;
       Entity* mOwner;
@@ -224,7 +230,12 @@ namespace dtEntity
       */
       bool Spawn(const std::string& name, Entity& spawned) const;
 
-      void GetSpawnerCreatedEntities(const std::string& spawnername, std::vector<EntityId>& ids) const;
+      void GetSpawnerCreatedEntities(const std::string& spawnername, std::vector<EntityId>& ids, bool recursive = true) const;
+
+      /**
+       * @return true if entity exists and was spawned by spawner or one of its child spawners
+       */
+      bool IsSpawnOf(EntityId, const std::string& spawnername) const;
 
       /**
        * Load scene from map file, start and configure entity systems
@@ -237,21 +248,6 @@ namespace dtEntity
        */
       bool UnloadScene();
 
-      /**
-       * Unload current scene and create new, empty scene
-       */
-      bool CreateScene(const std::string& datapath, const std::string& scenepath);
-
-      /**
-       * Get path of currently loaded scene
-       */
-      std::string GetCurrentScene() const { return mCurrentScene; }
-
-      /**
-       * Save entity system configurations to current scene file,
-       * @param saveAllMaps if set, save all currently loaded maps to map files
-       */
-      bool SaveCurrentScene(bool saveAllMaps = true);
 
       /**
        * Save entity system configurations to scene file,
@@ -327,6 +323,8 @@ namespace dtEntity
       // implementation of EntityManager::EntitySystemRequestCallback interface
       virtual bool CreateEntitySystem(EntityManager* em, ComponentType t);
 
+      static std::string CreateUniqueIdString();
+
    private:
 
       void EmitSpawnerDeleteMessages(MapSystem::SpawnerStorage& spawners, const std::string& path);
@@ -346,9 +344,6 @@ namespace dtEntity
       ComponentPluginManager mPluginManager;
 
       std::map<std::string, EntityId> mEntitiesByUniqueId;
-
-      std::string mCurrentScene;
-      std::string mCurrentSceneDataPath;
 
       osg::ref_ptr<MapEncoder> mMapEncoder;
    };

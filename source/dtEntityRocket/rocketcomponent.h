@@ -21,7 +21,7 @@
 #pragma once
 
 #include <dtEntity/defaultentitysystem.h>
-#include <dtEntity/osgcomponents.h>
+#include <dtEntity/nodecomponent.h>
 #include <dtEntity/property.h>
 #include <Rocket/Core/Variant.h>
 #include <v8.h>
@@ -89,6 +89,8 @@ namespace dtEntityRocket
       
    public:
      
+      static const dtEntity::ComponentType TYPE;
+
       RocketSystem(dtEntity::EntityManager& em);
       ~RocketSystem();
 

@@ -18,8 +18,6 @@
 * Martin Scheffler
 */
 
-//#define USE_XERCES
-
 #include <dtEntityQtWidgets/delegatefactory.h>
 #include <dtEntityQtWidgets/propertydelegate.h>
 
@@ -51,11 +49,7 @@ namespace dtEntityQtWidgets
       std::ostringstream os; os << i; return os.str(); 
    }
 
-#ifdef USE_XERCES
-   using namespace xercesc;
-#else
    using namespace rapidxml;
-#endif
 
    ////////////////////////////////////////////////////////////////////////////////
    DelegateFactory::DelegateFactory()
@@ -204,6 +198,21 @@ namespace dtEntityQtWidgets
 
    ////////////////////////////////////////////////////////////////////////////////
    ////////////////////////////////////////////////////////////////////////////////
+   TextAreaDelegateFactory::TextAreaDelegateFactory(const QString& language)
+      : mLanguage(language)
+   {
+   }
+
+   ////////////////////////////////////////////////////////////////////////////////
+   PropertySubDelegate* TextAreaDelegateFactory::Create(TreeItem* parent,
+      const QString& propname,
+      const dtEntity::Property* prop) const
+   {
+      return new TextAreaPropertyDelegate(mLanguage);
+   }
+
+   ////////////////////////////////////////////////////////////////////////////////
+   ////////////////////////////////////////////////////////////////////////////////
    ComponentDelegateFactory::ComponentDelegateFactory()
    {
    }
@@ -324,6 +333,28 @@ namespace dtEntityQtWidgets
          }
 
          DelegateFactory* factory = new ColorSelectorDelegateFactory();
+         delegateFactory->SetFactoryForChildren(propertyName.c_str(), factory);
+      }
+
+      ///////////////////////////////////////////////////////////////////////////////////////////////////////
+      void ParseTextAreaInput(xml_node<>* element, DelegateFactory* delegateFactory)
+      {
+         std::string propertyName;
+         std::string language = "";
+         for(xml_attribute<>* attr = element->first_attribute();
+              attr; attr = attr->next_attribute())
+         {
+            if(strcmp(attr->name(), "propertyname") == 0)
+            {
+               propertyName = attr->value();
+            }
+            else if(strcmp(attr->name(), "language") == 0)
+            {
+               language = attr->value();
+            }
+         }
+
+         DelegateFactory* factory = new TextAreaDelegateFactory(language.c_str());
          delegateFactory->SetFactoryForChildren(propertyName.c_str(), factory);
       }
 
@@ -561,6 +592,10 @@ namespace dtEntityQtWidgets
                {
                   ParseColorInput(currentNode, delegateFactory);
                }
+               else if(strcmp("textareainput", tagname) == 0)
+               {
+                  ParseTextAreaInput(currentNode, delegateFactory);
+               }
                else if(strcmp("componentinput", tagname) == 0)
                {
                   ParseComponentInput(currentNode, delegateFactory);
@@ -596,6 +631,7 @@ namespace dtEntityQtWidgets
       ///////////////////////////////////////////////////////////////////////////////////////////////////////
       bool LoadFactoryFromFile(const QString& path, DelegateFactory*& factory, Translator*& translator)
       {
+         osgDB::FilePathList l = osgDB::getDataFilePathList();
          const std::string foundPath = osgDB::findDataFile(path.toStdString());
          if(!osgDB::fileExists(foundPath))
          {
@@ -609,8 +645,6 @@ namespace dtEntityQtWidgets
          {
             return false;
          }
-
-
 
          std::ostringstream os;
          char buffer[1024];

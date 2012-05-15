@@ -30,6 +30,9 @@
 #include <dtEntity/initosgviewer.h>
 #include <dtEntity/layerattachpointcomponent.h>
 #include <dtEntity/mapcomponent.h>
+#include <dtEntity/resourcemanager.h>
+#include <dtEntity/systemmessages.h>
+#include <dtEntity/windowmanager.h>
 #include <dtEntityEditor/editormainwindow.h>
 #include <dtEntityQtWidgets/messages.h>
 #include <dtEntityQtWidgets/osggraphicswindowqt.h>
@@ -40,12 +43,7 @@
 #include <osgDB/FileUtils>
 #include <osgDB/FileNameUtils>
 #include <osgViewer/Viewer>
-#include <osgViewer/ViewerEventHandlers>  
-#ifdef __APPLE__
-# include <OpenGL/gl.h>
-#else
-# include <GL/gl.h>
-#endif
+#include <osgViewer/ViewerEventHandlers>
 #include <iostream>
 #include <QtCore/QDir>
 #include <osgDB/FileUtils>
@@ -53,26 +51,70 @@
 
 namespace dtEntityEditor
 {
-
-#ifdef DTENTITY_LIBRARY_STATIC
-
     // include the plugins we need
     USE_DTENTITYPLUGIN(dtEntitySimulation)
     USE_DTENTITYPLUGIN(dtEntityRocket)    
     USE_DTENTITYPLUGIN(dtEntityV8Plugin)    
-#endif
- 
+
    ////////////////////////////////////////////////////////////////////////////////
    EditorApplication::EditorApplication(int argc, char *argv[])
       : mMainWindow(NULL)
-      , mTimer(NULL)
       , mEntityManager(new dtEntity::EntityManager())
       , mStartOfFrameTick(osg::Timer::instance()->tick())
       , mTimeScale(1)
+      , mFileSystemWatcher(new QFileSystemWatcher())
    {
 
+      dtEntity::LogManager::GetInstance().AddListener(new dtEntity::ConsoleLogHandler());
+      
+      dtEntity::SetupDataPaths(argc,argv, false);
+
+      osgDB::FilePathList oldpaths;
+      for(osgDB::FilePathList::iterator i = osgDB::getDataFilePathList().begin(); i!= osgDB::getDataFilePathList().end(); ++i)
+      {
+         oldpaths.push_back(osgDB::convertFileNameToUnixStyle(*i));
+      }
+      osgDB::FilePathList newpaths;
+
+      QSettings settings;
+      QStringList qtpaths = settings.value("DataPaths", "ProjectAssets").toStringList();
+
+      foreach(QString qtpath, qtpaths)
+      {
+         if(QFile::exists(qtpath))
+         {
+            newpaths.push_back(osgDB::convertFileNameToUnixStyle(qtpath.toStdString()));
+         }
+         else
+         {
+            LOG_ERROR("Project assets folder does not exist: " << qtpath.toStdString());            
+         }      
+      }
+
+      for(unsigned int i = 0; i < oldpaths.size(); ++i)
+      {
+         if(std::find(newpaths.begin(), newpaths.end(), oldpaths[i]) == newpaths.end() && 
+            QFile::exists(oldpaths[i].c_str()))
+         {
+            newpaths.push_back(oldpaths[i]);
+         }
+      }
+
+      osgDB::setDataFilePathList(newpaths);
+
+      QStringList newpathsqt;
+      for(unsigned int i = 0; i < newpaths.size(); ++i)
+      {
+         newpathsqt.push_back(newpaths[i].c_str());
+      }
+
+      settings.setValue("DataPaths", newpathsqt);
+      emit DataPathsChanged(newpathsqt);
+
+      dtEntity::AddDefaultEntitySystemsAndFactories(argc, argv, *mEntityManager);
+
       // default plugin dir
-      mPluginPaths.push_back("dteplugins");
+      mPluginPaths.push_back("plugins");
 
       osg::ArgumentParser arguments(&argc,argv);
       mViewer = new osgViewer::Viewer(arguments);
@@ -83,9 +125,9 @@ namespace dtEntityEditor
       static const char* winvar = "OSG_WINDOW=0 0 800 600";
       putenv(const_cast<char*>(winvar));
 
-      dtEntity::InitOSGViewer(argc, argv, *mViewer, *mEntityManager, false, false);
-
-      dtEntityQtWidgets::RegisterMessageTypes(dtEntity::MessageFactory::GetInstance());
+      dtEntity::MessageFunctor f(this, &EditorApplication::OnResourceLoaded);
+      mEntityManager->RegisterForMessages(dtEntity::ResourceLoadedMessage::TYPE, f, "EditorApplication::OnResourceLoaded");
+      connect(mFileSystemWatcher, SIGNAL(fileChanged(QString)), this, SLOT(OnFileChanged(QString)));
    }
 
    ////////////////////////////////////////////////////////////////////////////////
@@ -93,11 +135,6 @@ namespace dtEntityEditor
    {
       delete mEntityManager;
       mEntityManager = NULL;
-      if(mTimer)
-      {
-         mTimer->stop();
-         mTimer->deleteLater();
-      }
    }
 
    ////////////////////////////////////////////////////////////////////////////////
@@ -109,13 +146,11 @@ namespace dtEntityEditor
    ////////////////////////////////////////////////////////////////////////////////
    void EditorApplication::SetMainWindow(EditorMainWindow* mw)
    {
-
       assert(mMainWindow == NULL);
       mMainWindow = mw;
       
       connect(mMainWindow, SIGNAL(Closed(bool)), this, SLOT(ShutDownGame(bool)));
       connect(mMainWindow, SIGNAL(ViewResized(const QSize&)), this, SLOT(ViewResized(const QSize&)));
-
    }
 
    ////////////////////////////////////////////////////////////////////////////////
@@ -131,10 +166,37 @@ namespace dtEntityEditor
    void EditorApplication::StartGame(const QString& sceneToLoad)
    {
       assert(mMainWindow != NULL);
+
+      // give application system access to viewer
+      dtEntity::ApplicationSystem* appsystem;
+      GetEntityManager().GetEntitySystem(dtEntity::ApplicationSystem::TYPE, appsystem);
+      appsystem->SetViewer(mViewer);
+
+      bool success = dtEntity::DoScreenSetup(0, NULL, *mViewer, GetEntityManager());
+      if(!success)
+      {
+         LOG_ERROR("Error setting up screens! exiting");
+         return;
+      }
+
+      dtEntity::SetupSceneGraph(*mViewer, GetEntityManager(), new osg::Group());
+    
+      osgViewer::ViewerBase::Views views;
+      mViewer->getViews(views);
+      for(osgViewer::ViewerBase::Views::iterator i = views.begin(); i != views.end(); ++i)
+      {
+         osgViewer::StatsHandler* stats = new osgViewer::StatsHandler();
+         stats->setKeyEventTogglesOnScreenStats(osgGA::GUIEventAdapter::KEY_Insert);
+         stats->setKeyEventPrintsOutStats(osgGA::GUIEventAdapter::KEY_Undo);
+         (*i)->addEventHandler(stats);
+      }
       
+      ////////////////////
+      
+      dtEntityQtWidgets::RegisterMessageTypes(dtEntity::MessageFactory::GetInstance());
+
       osgViewer::ViewerBase::Windows wins;
       mViewer->getWindows(wins);
-
 
       dtEntityQtWidgets::OSGGraphicsWindowQt* osgGraphWindow =
             dynamic_cast<dtEntityQtWidgets::OSGGraphicsWindowQt*>(wins.front());
@@ -152,12 +214,6 @@ namespace dtEntityEditor
 
       try
       { 
-
-         mTimer = new QTimer(this);
-         mTimer->setInterval(10);
-         connect(mTimer, SIGNAL(timeout()), this, SLOT(StepGame()), Qt::QueuedConnection);
-
-         mTimer->start();
 
          connect(this, SIGNAL(ErrorOccurred(const QString&)),
                  mMainWindow, SLOT(OnDisplayError(const QString&)));
@@ -199,10 +255,35 @@ namespace dtEntityEditor
       dtEntity::StartSystemMessage msg;
       mEntityManager->EmitMessage(msg);
 
+      StepGame();
+
    }
 
    //////////////////////////////////////////////////////////////////////////
+   QStringList EditorApplication::GetDataPaths() const
+   {
+      QSettings settings;
+      return settings.value("DataPaths", "ProjectAssets").toStringList();
+   }
 
+   //////////////////////////////////////////////////////////////////////////
+   void EditorApplication::SetDataPaths(const QStringList& l)
+   {
+      QSettings settings;
+      settings.setValue("DataPaths", l);
+
+      osgDB::FilePathList osgpaths;
+      foreach(QString qtpath, l)
+      {
+         if(QFile::exists(qtpath))
+         {
+           osgpaths.push_back(osgDB::convertFileNameToUnixStyle(qtpath.toStdString()));
+         }
+      }
+      osgDB::setDataFilePathList(osgpaths);
+   }
+
+   //////////////////////////////////////////////////////////////////////////
    void EditorApplication::AddPluginLibrary(std::string fileName)
    {
       // get Map system
@@ -218,17 +299,26 @@ namespace dtEntityEditor
    ////////////////////////////////////////////////////////////////////////////////
    void EditorApplication::StepGame()
    {
-      if(!mViewer->done())
+      dtEntity::ApplicationSystem* appsys;
+      GetEntityManager().GetES(appsys);
+
+      while(!mViewer->done())
       {
+
+         //LOG_ALWAYS("STEP!" << appsys->GetSimulationTime());
          mViewer->advance(DBL_MAX);
+
+         // check if a window should be closed
+         appsys->GetWindowManager()->ProcessQueuedMessages();
+
          mViewer->eventTraversal();
 
-         dtEntity::ApplicationSystem* appsys;
-         GetEntityManager().GetEntitySystem(dtEntity::ApplicationSystem::TYPE, appsys);
          appsys->EmitTickMessagesAndQueuedMessages();
 
          mViewer->updateTraversal();
          mViewer->renderingTraversals();
+
+         QCoreApplication::processEvents();
       }
    }
 
@@ -236,13 +326,6 @@ namespace dtEntityEditor
    void EditorApplication::ShutDownGame(bool)
    {
       mViewer->setDone(true);
-      
-      if(mTimer)
-      {
-         mTimer->stop();
-         mTimer->deleteLater();
-         mTimer = NULL;
-      }
 
       // delete entity manager now before EditorApplication object is moved to main thread.
       mEntityManager = NULL;
@@ -268,41 +351,27 @@ namespace dtEntityEditor
    }
 
    ////////////////////////////////////////////////////////////////////////////////
-   QStringList EditorApplication::GetDataPaths() const
+   void EditorApplication::OnResourceLoaded(const dtEntity::Message& m)
    {
-      QStringList out;
-      osgDB::FilePathList paths = osgDB::getDataFilePathList();
-      for(osgDB::FilePathList::iterator i = paths.begin(); i != paths.end(); ++i)
+      const dtEntity::ResourceLoadedMessage& msg = static_cast<const dtEntity::ResourceLoadedMessage&>(m);
+      QString path = msg.GetPath().c_str();
+      if(!mFileSystemWatcher->files().contains(path))
       {
-         out.push_back(i->c_str());
-      }
-      return out;
+         mFileSystemWatcher->addPath(path);
+      }      
    }
 
    ////////////////////////////////////////////////////////////////////////////////
-   void EditorApplication::SetDataPaths(const QStringList& paths)
+   void EditorApplication::OnFileChanged(const QString& path)
    {
-      // make sure we don't loose the paths used by OSG...
-      osgDB::FilePathList in = osgDB::getDataFilePathList();
-
-      for(QStringList::const_iterator i = paths.begin(); i != paths.end(); ++i)
+      
+      if(mFileSystemWatcher->files().contains(path))
       {
-         QString path = *i;
-         if(!QFile::exists(path))
-         {
-            LOG_ERROR("Project assets folder does not exist: " + path.toStdString());
-         }
-         else
-         {
-            in.push_back(path.toStdString());
-         }
+         mFileSystemWatcher->removePath(path);
+         mFileSystemWatcher->addPath(path);
       }
 
-      osgDB::setDataFilePathList(in);
-
-      QSettings settings;
-      settings.setValue("DataPaths", paths);
-      emit DataPathsChanged(paths);
+      dtEntity::ResourceManager::GetInstance().TriggerReload(path.toStdString(), *mEntityManager);
    }
 
    ////////////////////////////////////////////////////////////////////////////////
@@ -348,6 +417,15 @@ namespace dtEntityEditor
       }
    }
 
+
+   ////////////////////////////////////////////////////////////////////////////////
+   void EditorApplication::NewScene()
+   {
+      dtEntity::MapSystem* mapSystem;
+      GetEntityManager().GetES(mapSystem);
+      mapSystem->UnloadScene();
+   }
+
    ////////////////////////////////////////////////////////////////////////////////
    void EditorApplication::LoadScene(const QString& path)
    {  
@@ -355,10 +433,7 @@ namespace dtEntityEditor
       dtEntity::MapSystem* mapSystem;
       GetEntityManager().GetEntitySystem(dtEntity::MapComponent::TYPE, mapSystem);
 
-      if(mapSystem->GetCurrentScene().size() != 0)
-      {
-         mapSystem->UnloadScene();
-      }
+      mapSystem->UnloadScene();
 
       mapSystem->LoadScene(path.toStdString());
 
@@ -368,40 +443,21 @@ namespace dtEntityEditor
 
    }
 
+
    ////////////////////////////////////////////////////////////////////////////////
-   void EditorApplication::AddScene(const QString& datapath, const QString& mappath)
+   void EditorApplication::SaveScene(const QString& path)
    {
       dtEntity::MapSystem* mapSystem;
       GetEntityManager().GetEntitySystem(dtEntity::MapComponent::TYPE, mapSystem);
 
-      mapSystem->CreateScene(datapath.toStdString(), mappath.toStdString());
-      //CreateCameraEntityIfNotExists();
-   }
-
-   ////////////////////////////////////////////////////////////////////////////////
-   void EditorApplication::SaveScene()
-   {
-      dtEntity::MapSystem* mapSystem;
-      GetEntityManager().GetEntitySystem(dtEntity::MapComponent::TYPE, mapSystem);
       std::ostringstream os;
-      bool success = mapSystem->SaveCurrentScene(false);
+      bool success = mapSystem->SaveScene(path.toStdString(), true);
       if(!success)
       {
          ErrorOccurred(tr("Cannot save scene, please check file permissions!"));
       }
    }
 
-   ////////////////////////////////////////////////////////////////////////////////
-   void EditorApplication::SaveAll()
-   {
-      dtEntity::MapSystem* mapSystem;
-      GetEntityManager().GetEntitySystem(dtEntity::MapComponent::TYPE, mapSystem);
-      bool success = mapSystem->SaveCurrentScene(true);
-      if(!success)
-      {
-         ErrorOccurred(tr("Cannot save scene or one of the maps, please check file permissions!"));
-      }
-   }
 
    ////////////////////////////////////////////////////////////////////////////////
    void EditorApplication::InitializeScripting()

@@ -101,6 +101,10 @@ namespace dtEntityWrappers
 
       mLoadScriptFunctor = dtEntity::MessageFunctor(this, &ScriptSystem::OnLoadScript);
       em.RegisterForMessages(ExecuteScriptMessage::TYPE, mLoadScriptFunctor, "ScriptSystem::OnLoadScript");
+
+      HandleScope scope;
+      mEntityIdString = Persistent<String>::New(String::New("__entityid__"));
+      mPropertyNamesString = Persistent<String>::New(String::New("__propertynames__"));
    }  
 
    ////////////////////////////////////////////////////////////////////////////
@@ -196,7 +200,7 @@ namespace dtEntityWrappers
       {
          std::string script = (*i)->StringValue();
          v8::HandleScope scope;
-         v8::Handle<v8::Value> val = ExecuteFile(script);
+         ExecuteFile(script);
       }
    }
 
@@ -233,42 +237,55 @@ namespace dtEntityWrappers
    }
 
    ////////////////////////////////////////////////////////////////////////////
-   void ScriptSystem::Tick(const dtEntity::Message& m)
+   void ScriptSystem::FetchGlobalTickFunction()
    {
       HandleScope scope;
-      Handle<Context> context = GetGlobalContext();      
-      Context::Scope context_scope(context);
+      Handle<Context> context = GetGlobalContext();
+
+      mGlobalTickFunction.Clear();
+
       Handle<String> funcname = String::New("__executeTimeOuts");
-      if(!context->Global()->Has(funcname))
+      if(context->Global()->Has(funcname))
+      {
+         Handle<Value> func = context->Global()->Get(funcname);
+         if(!func.IsEmpty())
+         {
+            Handle<Function> f = Handle<Function>::Cast(func);
+            if(!f.IsEmpty())
+            {
+               mGlobalTickFunction = Persistent<Function>::New(f);
+            }
+         }
+      }
+   }
+
+   ////////////////////////////////////////////////////////////////////////////
+   void ScriptSystem::Tick(const dtEntity::Message& m)
+   {
+      if(mGlobalTickFunction.IsEmpty())
       {
          return;
       }
 
-      Handle<Value> func = context->Global()->Get(funcname);
-      if(!func.IsEmpty())
+      HandleScope scope;  
+      Context::Scope context_scope(GetGlobalContext());
+
+      const dtEntity::TickMessage& msg = static_cast<const dtEntity::TickMessage&>(m);
+
+      TryCatch try_catch;
+      Handle<Value> argv[3] = {
+         Number::New(msg.GetDeltaSimTime()),
+         Number::New(msg.GetSimulationTime()),
+         Uint32::New(osg::Timer::instance()->time_m())
+      };
+
+      Handle<Value> ret = mGlobalTickFunction->Call(mGlobalTickFunction, 3, argv);
+
+      if(ret.IsEmpty())
       {
-         Handle<Function> f = Handle<Function>::Cast(func);
-         if(f.IsEmpty()) 
-         {
-            return;
-         }
-
-         const dtEntity::TickMessage& msg = static_cast<const dtEntity::TickMessage&>(m);
-         
-         TryCatch try_catch;
-         Handle<Value> argv[3] = { 
-            Number::New(msg.GetDeltaSimTime()),
-            Number::New(msg.GetSimulationTime()),
-            Uint32::New(osg::Timer::instance()->time_m())
-         };
-         
-         Handle<Value> ret = f->Call(f, 3, argv);
-
-         if(ret.IsEmpty()) 
-         {
-            ReportException(&try_catch);
-         }
+         ReportException(&try_catch);
       }
+
    }
 
    ////////////////////////////////////////////////////////////////////////////////
@@ -326,6 +343,8 @@ namespace dtEntityWrappers
    //      return try_catch;
       }
 
+      FetchGlobalTickFunction();
+
       return handle_scope.Close(ret);
    }
 
@@ -341,6 +360,9 @@ namespace dtEntityWrappers
          v8::Context::Scope context_scope(GetGlobalContext());
          TryCatch try_catch;
          Local<Value> ret = script->Run();
+
+         FetchGlobalTickFunction();
+
          if(try_catch.HasCaught())
          {
             ReportException(&try_catch);
@@ -411,7 +433,7 @@ namespace dtEntityWrappers
          HandleScope scope;
          Handle<Object> o = Handle<Object>::Cast(v);
          assert(!o.IsEmpty());
-         Handle<Value> val = o->GetHiddenValue(String::New("__entityid__"));
+         Handle<Value> val = o->GetHiddenValue(scriptsys->GetEntityIdString());
          assert(!val.IsEmpty());
          dtEntity::EntityId id = val->Uint32Value();
          scriptsys->RemoveFromComponentMap(component->GetType(), id);         

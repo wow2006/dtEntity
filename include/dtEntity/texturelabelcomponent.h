@@ -26,7 +26,7 @@
 #include <dtEntity/entity.h>
 #include <dtEntity/entityid.h>
 #include <dtEntity/defaultentitysystem.h>
-#include <dtEntity/osgcomponents.h>
+#include <dtEntity/nodecomponent.h>
 #include <osg/Geometry>
 #include <osg/Program>
 
@@ -129,6 +129,8 @@ namespace dtEntity
       typedef dtEntity::DefaultEntitySystem<TextureLabelComponent> BaseClass;
       
    public:
+
+      static const dtEntity::ComponentType TYPE;
 
       TextureLabelSystem(dtEntity::EntityManager& em);
       virtual void OnPropertyChanged(dtEntity::StringId propname, dtEntity::Property& prop);

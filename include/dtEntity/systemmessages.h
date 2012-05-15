@@ -199,6 +199,7 @@ namespace dtEntity
       static const StringId EntityNameId;
       static const StringId UniqueIdId;
       static const StringId MapNameId;
+      static const StringId VisibleInEntityListId;
 
       EntityAddedToSceneMessage();
 
@@ -216,12 +217,16 @@ namespace dtEntity
       std::string GetMapName() const { return mMapName.Get(); }
       void SetMapName(const std::string& v) { mMapName.Set(v); }
 
+      bool GetVisibleInEntityList() const { return mVisibleInEntityList.Get(); }
+      void SetVisibleInEntityList(bool v) { mVisibleInEntityList.Set(v); }
+
    private:
 
       UIntProperty mAboutEntityId;
       StringProperty mEntityName;
       StringProperty mUniqueId;
       StringProperty mMapName;
+      BoolProperty mVisibleInEntityList;
    };
 
    ////////////////////////////////////////////////////////////////////////////////
@@ -251,6 +256,41 @@ namespace dtEntity
 
    ////////////////////////////////////////////////////////////////////////////////
    /**
+    * Is sent when name or unique id of entity is changed
+    */
+   class DT_ENTITY_EXPORT EntityNameUpdatedMessage
+      : public Message
+   {
+   public:
+
+      static const MessageType TYPE;
+      static const StringId AboutEntityId;
+      static const StringId EntityNameId;
+      static const StringId UniqueIdId;
+
+      EntityNameUpdatedMessage();
+
+      // Create a copy of this message on the heap
+      virtual Message* Clone() const { return CloneContainer<EntityNameUpdatedMessage>(); }
+
+      void SetAboutEntityId(EntityId id) { mAboutEntity.Set(id); }
+      EntityId GetAboutEntityId() const { return mAboutEntity.Get(); }
+
+      void SetEntityName(const std::string& v) { mEntityName.Set(v); }
+      std::string GetEntityName() const { return mEntityName.Get(); }
+
+      void SetUniqueId(const std::string& v) { mUniqueId.Set(v); }
+      std::string GetUniqueId() const { return mUniqueId.Get(); }
+
+   private:
+
+      UIntProperty mAboutEntity;
+      StringProperty mEntityName;
+      StringProperty mUniqueId;
+   };
+
+   ////////////////////////////////////////////////////////////////////////////////
+   /**
     * This message gets sent when the method EntityManager::RemoveFromScene method is
     * called. The layer system reacts to this message by removing the entity from the scene
     * graph.
@@ -265,6 +305,7 @@ namespace dtEntity
       static const StringId EntityNameId;
       static const StringId UniqueIdId;
       static const StringId MapNameId;
+      static const StringId VisibleInEntityListId;
 
       EntityRemovedFromSceneMessage();
 
@@ -282,12 +323,16 @@ namespace dtEntity
       std::string GetMapName() const { return mMapName.Get(); }
       void SetMapName(const std::string& v) { mMapName.Set(v); }
 
+      bool GetVisibleInEntityList() const { return mVisibleInEntityList.Get(); }
+      void SetVisibleInEntityList(bool v) { mVisibleInEntityList.Set(v); }
+
    private:
 
       UIntProperty mAboutEntityId;
       StringProperty mEntityName;
       StringProperty mUniqueId;
       StringProperty mMapName;
+      BoolProperty mVisibleInEntityList;
    };
 
    ////////////////////////////////////////////////////////////////////////////////
@@ -313,6 +358,36 @@ namespace dtEntity
    private:
 
       UIntProperty mAboutEntity;
+   };
+
+   ////////////////////////////////////////////////////////////////////////////////
+   /**
+    * Is sent when an entity was added to the selection
+    */
+   class DT_ENTITY_EXPORT EntitySpawnedMessage
+      : public Message
+   {
+   public:
+
+      static const MessageType TYPE;
+      static const StringId AboutEntityId;
+      static const StringId SpawnerNameId;
+
+      EntitySpawnedMessage();
+
+      // Create a copy of this message on the heap
+      virtual Message* Clone() const { return CloneContainer<EntitySpawnedMessage>(); }
+
+      void SetAboutEntityId(EntityId id) { mAboutEntity.Set(id); }
+      EntityId GetAboutEntityId() const { return mAboutEntity.Get(); }
+
+      void SetSpawnerName(const std::string& name) { mSpawnerName.Set(name); }
+      std::string GetSpawnerName() const { return mSpawnerName.Get(); }
+
+   private:
+
+      UIntProperty mAboutEntity;
+      StringProperty mSpawnerName;
    };
 
    ////////////////////////////////////////////////////////////////////////////////
@@ -531,6 +606,56 @@ namespace dtEntity
 
       PostFrameMessage();
       virtual Message* Clone() const { return CloneContainer<PostFrameMessage>(); }
+   };
+
+   ////////////////////////////////////////////////////////////////////////////////
+   /**
+    * Is sent when a watched resource was changed on disk
+    */
+   class DT_ENTITY_EXPORT ResourceChangedMessage
+      : public Message
+   {
+   public:
+
+      // type identifier of this message class
+      static const MessageType TYPE;
+      static const StringId PathId;
+
+      ResourceChangedMessage();
+
+      // Create a copy of this message on the heap
+      virtual dtEntity::Message* Clone() const { return CloneContainer<ResourceChangedMessage>(); }
+
+      void SetPath(const std::string& v) { mPath.Set(v); }
+      std::string GetPath() const { return mPath.Get(); }
+
+   private:
+      dtEntity::StringProperty mPath;
+   };
+
+   ////////////////////////////////////////////////////////////////////////////////
+   /**
+    * Is sent when a watched resource was changed on disk
+    */
+   class DT_ENTITY_EXPORT ResourceLoadedMessage
+      : public Message
+   {
+   public:
+
+      // type identifier of this message class
+      static const MessageType TYPE;
+      static const StringId PathId;
+
+      ResourceLoadedMessage();
+
+      // Create a copy of this message on the heap
+      virtual dtEntity::Message* Clone() const { return CloneContainer<ResourceLoadedMessage>(); }
+
+      void SetPath(const std::string& v) { mPath.Set(v); }
+      std::string GetPath() const { return mPath.Get(); }
+
+   private:
+      dtEntity::StringProperty mPath;
    };
 
    ////////////////////////////////////////////////////////////////////////////////

@@ -28,6 +28,7 @@
 #include <dtEntity/mapcomponent.h>
 #include <dtEntity/nodemasks.h>
 #include <dtEntity/spawner.h>
+#include <dtEntity/systemmessages.h>
 #include <dtEntity/windowmanager.h>
 #include <dtEntityQtWidgets/messages.h>
 #include <osgUtil/LineSegmentIntersector>
@@ -42,6 +43,7 @@ namespace dtEntityQtWidgets
    ////////////////////////////////////////////////////////////////////////////////
    SpawnerList::SpawnerList()
       : mDeleteSpawnerAction(new QAction(tr("Delete Spawner"), this))
+      , mSelectBySpawnerAction(new QAction(tr("Select All Spawns"), this))
       , mSelected(NULL)
       , mReclassifyMeny(new QMenu(tr("Reclassify"), this))
    {
@@ -58,6 +60,7 @@ namespace dtEntityQtWidgets
       setFont(sansFont);
 
       connect(mDeleteSpawnerAction, SIGNAL(triggered()), this, SLOT(DeleteSelectedSpawners()));
+      connect(mSelectBySpawnerAction, SIGNAL(triggered()), this, SLOT(SelectBySelectedSpawner()));
       connect(mReclassifyMeny, SIGNAL(triggered(QAction*)), this, SLOT(OnReclassify(QAction*)));
    }
 
@@ -73,6 +76,15 @@ namespace dtEntityQtWidgets
       if(mSelected != NULL)
       {
          emit DeleteSpawner(mSelected->text());
+      }
+   }
+
+   ////////////////////////////////////////////////////////////////////////////////
+   void SpawnerList::SelectBySelectedSpawner()
+   {
+      if(mSelected != NULL)
+      {
+         emit SelectBySpawner(mSelected->text());
       }
    }
 
@@ -111,6 +123,7 @@ namespace dtEntityQtWidgets
            mSelected = item;
            QMenu menu(this);
            menu.addAction(mDeleteSpawnerAction);
+           menu.addAction(mSelectBySpawnerAction);
            menu.addMenu(mReclassifyMeny);
            menu.exec(mapToGlobal(event->pos()));
         }
@@ -141,6 +154,7 @@ namespace dtEntityQtWidgets
       ui.mListPlaceholder->layout()->addWidget(mSpawnerList);
       connect(mSpawnerList, SIGNAL(spawnerClicked( QListWidgetItem*)), this, SLOT(OnItemClicked(QListWidgetItem*)));
       connect(mSpawnerList, SIGNAL(DeleteSpawner(QString)), this, SIGNAL(DeleteSpawner(QString)));
+      connect(mSpawnerList, SIGNAL(SelectBySpawner(QString)), this, SIGNAL(SelectBySpawner(QString)));
       connect(mSpawnerList, SIGNAL(ChangeCategory(QString, QString, QString)), this, SIGNAL(ChangeSpawnerCategory(QString, QString, QString)));
       connect(mCategories, SIGNAL(currentIndexChanged(const QString&)), this, SLOT(CategoryChanged(const QString&)));
       connect(ui.mAddCategoryButton, SIGNAL(clicked()), this, SLOT(OnAddCategoryButtonClicked()));
@@ -328,6 +342,8 @@ namespace dtEntityQtWidgets
 
       connect(view, SIGNAL(DeleteSpawner(QString)), this, SLOT(SpawnerDeleted(QString)));
 
+      connect(view, SIGNAL(SelectBySpawner(QString)), this, SLOT(DoSelectBySpawner(QString)));
+
       connect(view, SIGNAL(ChangeSpawnerCategory(QString, QString, QString)), this, SLOT(OnChangeSpawnerCategory(QString, QString, QString)));
 
    }
@@ -347,17 +363,18 @@ namespace dtEntityQtWidgets
 
       dtEntity::MapSystem* mtsystem;
       bool success = mEntityManager->GetEntitySystem(dtEntity::MapComponent::TYPE, mtsystem);
-      assert(success);
-
-      std::map<std::string, dtEntity::Spawner*> spawners;
-      mtsystem->GetAllSpawners(spawners);
-      std::map<std::string, dtEntity::Spawner*>::const_iterator i;
-      for(i = spawners.begin(); i != spawners.end(); ++i)
+      if(success)
       {
-         if(i->second->GetAddToSpawnerStore())
+         std::map<std::string, dtEntity::Spawner*> spawners;
+         mtsystem->GetAllSpawners(spawners);
+         std::map<std::string, dtEntity::Spawner*>::const_iterator i;
+         for(i = spawners.begin(); i != spawners.end(); ++i)
          {
-            emit AddSpawner(i->second->GetName().c_str(), i->second->GetGUICategory().c_str(),
-                            i->second->GetIconPath().c_str());
+            if(i->second->GetAddToSpawnerStore())
+            {
+               emit AddSpawner(i->second->GetName().c_str(), i->second->GetGUICategory().c_str(),
+                               i->second->GetIconPath().c_str());
+            }
          }
       }
    }
@@ -428,17 +445,28 @@ namespace dtEntityQtWidgets
          mc->SetEntityName(spawner->GetName());
          mc->SetMapName(targetMap.toStdString());
       }
-      mEntityManager->AddToScene(entity->GetId());
 
-      dtEntity::TransformComponent* tcomp;      
+      dtEntity::TransformComponent* tcomp;
       if(mEntityManager->GetComponent(entity->GetId(), tcomp, true))
       {
          tcomp->SetTranslation(spawnPosition);
       }
-      
-      dtEntity::RequestEntitySelectMessage msg;
-      msg.SetAboutEntityId(entity->GetId());
-      mEntityManager->EmitMessage(msg);
+
+      {
+         dtEntity::EntitySpawnedMessage msg;
+         msg.SetSpawnerName(spawner->GetName());
+         msg.SetAboutEntityId(entity->GetId());
+         mEntityManager->EmitMessage(msg);
+      }
+
+
+      mEntityManager->AddToScene(entity->GetId());
+
+      {
+         dtEntity::RequestEntitySelectMessage msg;
+         msg.SetAboutEntityId(entity->GetId());
+         mEntityManager->EmitMessage(msg);
+      }
    }
 
    ////////////////////////////////////////////////////////////////////////////////
@@ -458,6 +486,23 @@ namespace dtEntityQtWidgets
       if(!success)
       {
          LOG_WARNING("Could not delete spawner!");
+      }
+   }
+
+   ////////////////////////////////////////////////////////////////////////////////
+   void SpawnerStoreController::DoSelectBySpawner(const QString& name)
+   {
+      dtEntity::MapSystem* mtsystem;
+      mEntityManager->GetEntitySystem(dtEntity::MapComponent::TYPE, mtsystem);
+      std::vector<dtEntity::EntityId> ids;
+      mtsystem->GetSpawnerCreatedEntities(name.toStdString(), ids);
+
+      for(unsigned int i = 0; i < ids.size(); ++i)
+      {
+         dtEntity::RequestEntitySelectMessage msg;
+         msg.SetAboutEntityId(ids[i]);
+         msg.SetUseMultiSelect(true);
+         mEntityManager->EmitMessage(msg);
       }
    }
 

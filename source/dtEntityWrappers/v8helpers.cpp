@@ -194,6 +194,26 @@ namespace dtEntityWrappers
    }
 
    ////////////////////////////////////////////////////////////////////////////////
+   v8::Handle<v8::Value> WrapSID(dtEntity::StringId v)
+   {
+#if DTENTITY_USE_STRINGS_AS_STRINGIDS
+      return String::New(v.c_str());
+#else
+      return Uint32::New(v);
+#endif
+   }
+
+   ////////////////////////////////////////////////////////////////////////////////
+   dtEntity::StringId UnwrapSID(v8::Handle<v8::Value> v)
+   {
+#if DTENTITY_USE_STRINGS_AS_STRINGIDS
+      return ToStdString(v);
+#else
+      return v->Uint32Value();
+#endif
+   }
+
+   ////////////////////////////////////////////////////////////////////////////////
    bool IsVec2(v8::Handle<v8::Value> v)
    {
       return (!v.IsEmpty() && v->IsArray() && Handle<Array>::Cast(v)->Length() >= 2);
@@ -299,10 +319,14 @@ namespace dtEntityWrappers
       void * data = mmap(0, *size, PROT_READ, MAP_SHARED, f, 0);
       close(f);
    #else
+#ifdef _WIN32
       #	pragma warning(push)
       #pragma warning (disable : 4996)
+#endif
       FILE * f = fopen(name, "rb");
+#ifdef _WIN32
       #	pragma warning(pop)
+#endif
       if (f == NULL) { return NULL; }
       fseek(f, 0, SEEK_END);
       size_t s = ftell(f);
@@ -346,10 +370,15 @@ namespace dtEntityWrappers
       close(f);
 
    #else
+#ifdef _WIN32
       #	pragma warning(push)
       #pragma warning (disable : 4996)
+#endif
       FILE * f = fopen(name, "wb");
+
+#ifdef _WIN32
       #	pragma warning(pop)
+#endif
       if (f == NULL) { return -1; }
       fwrite(data, size, 1,f);
       fclose(f);

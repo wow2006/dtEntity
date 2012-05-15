@@ -24,7 +24,7 @@
 #include <dtEntity/component.h>
 #include <dtEntity/defaultentitysystem.h>
 #include <dtEntity/export.h>
-#include <dtEntity/osgcomponents.h>
+#include <dtEntity/groupcomponent.h>
 #include <dtEntity/scriptaccessor.h>
 #include <dtEntity/stringid.h>
 #include <osg/Group>
@@ -73,8 +73,10 @@ namespace dtEntity
       friend class LayerAttachPointComponent;
 
       typedef DefaultEntitySystem<LayerAttachPointComponent> BaseClass;
+
    public:
     
+      static const ComponentType TYPE;
       static const StringId DefaultLayerId;
       static const StringId RootId;
 

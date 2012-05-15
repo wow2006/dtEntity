@@ -27,7 +27,7 @@
 #include <dtEntity/entity.h>
 #include <dtEntity/entityid.h>
 #include <dtEntity/defaultentitysystem.h>
-#include <dtEntity/osgcomponents.h>
+#include <dtEntity/nodecomponent.h>
 #include <osg/Geometry>
 #include <osgText/Text>
 #include <dtEntity/scriptaccessor.h>
@@ -130,6 +130,8 @@ namespace dtEntity
       typedef dtEntity::DefaultEntitySystem<TextLabelComponent> BaseClass;
       
    public:
+
+      static const dtEntity::ComponentType TYPE;
 
       TextLabelSystem(dtEntity::EntityManager& em);
 

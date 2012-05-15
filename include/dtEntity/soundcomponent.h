@@ -1,5 +1,5 @@
-/* -*-c++-*-
-* Delta3D Open Source Game and Simulation Engine
+/*
+* dtEntity Game and Simulation Engine
 *
 * This library is free software; you can redistribute it and/or modify it under
 * the terms of the GNU Lesser General Public License as published by the Free
@@ -24,7 +24,7 @@
 #include <osg/ref_ptr>
 #include <dtEntity/export.h>
 #include <dtEntity/defaultentitysystem.h>
-#include <dtEntity/osgcomponents.h>
+#include <dtEntity/nodecomponent.h>
 #include <dtEntity/component.h>
 #include <dtEntity/message.h>
 #include <dtEntity/stringid.h>
@@ -110,6 +110,8 @@ namespace dtEntity
    class DT_ENTITY_EXPORT SoundSystem : public DefaultEntitySystem<SoundComponent>
    {
    public:
+
+      static const ComponentType TYPE;
 
       SoundSystem(EntityManager& em);
       ~SoundSystem();

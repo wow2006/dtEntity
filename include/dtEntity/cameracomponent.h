@@ -22,8 +22,7 @@
 
 #include <dtEntity/export.h>
 #include <dtEntity/defaultentitysystem.h>
-#include <dtEntity/osgcomponents.h>
-#include <dtEntity/component.h>
+#include <dtEntity/transformcomponent.h>
 #include <dtEntity/stringid.h>
 #include <osg/Group>
 #include <osg/ref_ptr>
@@ -94,7 +93,7 @@ namespace dtEntity
 
       void FetchCamera();
 
-      void SetContextId(unsigned int id) { mContextId.Set(id); }
+      void SetContextId(unsigned int id);
       unsigned int GetContextId() const { return mContextId.Get(); }
 
       void SetLayerAttachPoint(StringId id) { mLayerAttachPoint.Set(id); }
@@ -207,6 +206,8 @@ namespace dtEntity
       : public DefaultEntitySystem<CameraComponent>
    {
    public:
+
+      static const ComponentType TYPE;
 
       CameraSystem(EntityManager& em);
 

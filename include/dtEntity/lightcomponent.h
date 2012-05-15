@@ -26,7 +26,7 @@
 #include <dtEntity/entity.h>
 #include <dtEntity/entityid.h>
 #include <dtEntity/defaultentitysystem.h>
-#include <dtEntity/osgcomponents.h>
+#include <dtEntity/nodecomponent.h>
 
 
 namespace osg
@@ -101,6 +101,7 @@ namespace dtEntity
       typedef dtEntity::DefaultEntitySystem<LightComponent> BaseClass;
       
    public:
+      static const dtEntity::ComponentType TYPE;
 
       LightSystem(dtEntity::EntityManager& em);     
 

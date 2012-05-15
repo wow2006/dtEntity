@@ -80,7 +80,7 @@ namespace dtEntityWrappers
       dtEntity::EntitySystem* es = UnwrapEntitySystem(args.Holder());
       if(!args[0]->IsUint32())
       {
-         return ThrowError("Usage: getComponent(int)");
+         return ThrowError("Usage: getComponent(int entityid, [bool getDerived])");
       }
 
       dtEntity::EntityId eid = args[0]->Uint32Value();
@@ -88,7 +88,7 @@ namespace dtEntityWrappers
       bool found = es->GetEntityManager().GetComponent(eid, es->GetComponentType(), comp, args[1]->BooleanValue());
       if(found)
       {
-         return WrapComponent(ss, eid, comp);
+         return WrapComponent(args.Holder(), ss, eid, comp);
       }
       else
       {
@@ -115,7 +115,7 @@ namespace dtEntityWrappers
          dtEntity::Component* comp;
          if(es->GetComponent(eid, comp))
          {
-            arr->Set(Integer::New(count++), WrapComponent(ss, eid, comp));
+            arr->Set(Integer::New(count++), WrapComponent(args.Holder(), ss, eid, comp));
          }
       }
       return scope.Close(arr);
@@ -162,7 +162,7 @@ namespace dtEntityWrappers
       dtEntity::EntityId eid = args[0]->Uint32Value();
       if(es->CreateComponent(eid, component))
       {
-         return WrapComponent(ss, eid, component);
+         return WrapComponent(args.Holder(), ss, eid, component);
       }
       else
       {
@@ -243,14 +243,61 @@ namespace dtEntityWrappers
          if(val->IsArray())
          {
             Handle<Array> arr = Handle<Array>::Cast(val);
-            dtEntity::ArrayProperty p;
-            for(unsigned int i = 0; i < arr->Length(); ++i)
+
+            Handle<String> hintstr = String::New("__TYPE_HINT");
+            if(arr->Has(hintstr))
             {
-               p.Add(Convert(arr->Get(Integer::New(i))));
+               Handle<Value> hint = arr->Get(hintstr);
+               std::string h = ToStdString(hint);
+               if(h == "V2")
+               {
+                  dtEntity::Vec2dProperty p(UnwrapVec2(val));
+                  pargs.push_back(&p);
+                  return scope.Close(ESCallScriptMethodRecursive(args, pargs, idx + 1));
+               }
+               else if(h == "V3")
+               {
+                  dtEntity::Vec3dProperty p(UnwrapVec3(val));
+                  pargs.push_back(&p);
+                  return scope.Close(ESCallScriptMethodRecursive(args, pargs, idx + 1));
+
+               }
+               else if(h == "V4")
+               {
+                  dtEntity::Vec4dProperty p(UnwrapVec4(val));
+                  pargs.push_back(&p);
+                  return scope.Close(ESCallScriptMethodRecursive(args, pargs, idx + 1));
+               }
+               else if(h == "QT")
+               {
+                  dtEntity::QuatProperty p(UnwrapQuat(val));
+                  pargs.push_back(&p);
+                  return scope.Close(ESCallScriptMethodRecursive(args, pargs, idx + 1));
+               }
+               else if(h == "MT")
+               {
+                  dtEntity::MatrixProperty p(UnwrapMatrix(val));
+                  pargs.push_back(&p);
+                  return scope.Close(ESCallScriptMethodRecursive(args, pargs, idx + 1));
+               }
+               else
+               {
+                  assert(false && "Unknown vector type encountered");
+                  return Undefined();
+               }
             }
-            
-            pargs.push_back(&p);
-            return scope.Close(ESCallScriptMethodRecursive(args, pargs, idx + 1));
+            else
+            {
+               Handle<Array> arr = Handle<Array>::Cast(val);
+               dtEntity::ArrayProperty p;
+               for(unsigned int i = 0; i < arr->Length(); ++i)
+               {
+                  p.Add(ConvertValueToProperty(arr->Get(Integer::New(i))));
+               }
+
+               pargs.push_back(&p);
+               return scope.Close(ESCallScriptMethodRecursive(args, pargs, idx + 1));
+            }
             
          }
          else if(val->IsBoolean())
@@ -301,7 +348,7 @@ namespace dtEntityWrappers
          Handle<Value> r = Null();
          if(ret != NULL)
          {
-            r = PropToVal(args.Holder()->CreationContext(), ret);
+            r = ConvertPropertyToValue(args.Holder()->CreationContext(), ret);
             delete ret;
          }
          return scope.Close(r);
@@ -321,7 +368,38 @@ namespace dtEntityWrappers
       HandleScope scope;
       Handle<External> ext = Handle<External>::Cast(info.Data());
       dtEntity::Property* prop = static_cast<dtEntity::Property*>(ext->Value());
-      return scope.Close(PropToVal(info.Holder()->CreationContext(), prop));
+
+      switch(prop->GetType())
+      {
+      case dtEntity::DataType::ARRAY:
+      case dtEntity::DataType::VEC2:
+      case dtEntity::DataType::VEC2D:
+      case dtEntity::DataType::VEC3:
+      case dtEntity::DataType::VEC3D:
+      case dtEntity::DataType::VEC4:
+      case dtEntity::DataType::VEC4D:
+      case dtEntity::DataType::GROUP:
+      case dtEntity::DataType::MATRIX:
+      case dtEntity::DataType::QUAT:
+      {
+         Handle<Value> v = info.Holder()->GetHiddenValue(propname);
+         if(v.IsEmpty())
+         {
+            v = ConvertPropertyToValue(info.Holder()->CreationContext(), prop);
+            info.Holder()->SetHiddenValue(propname, v);
+         }
+         else
+         {
+            Handle<Value> ret = SetPropertyFromValue(v, prop);
+            if(ret->BooleanValue() == false) {
+               return ThrowError("Internal error: Did property change type on the fly?");
+            }
+         }
+         return scope.Close(v);
+      }
+      default:
+         return scope.Close(ConvertPropertyToValue(info.Holder()->CreationContext(), prop));
+      }
    }
 
    ////////////////////////////////////////////////////////////////////////////////
@@ -335,7 +413,7 @@ namespace dtEntityWrappers
       dtEntity::Property* prop = static_cast<dtEntity::Property*>(ext->Value());
       if(prop)
       {
-         ValToProp(value, prop);
+         SetPropertyFromValue(value, prop);
       }
 
       dtEntity::EntitySystem* sys = UnwrapEntitySystem(info.Holder());

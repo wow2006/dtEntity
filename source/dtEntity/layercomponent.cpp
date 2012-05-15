@@ -25,6 +25,7 @@
 #include <dtEntity/entity.h>
 #include <dtEntity/entitymanager.h>
 #include <dtEntity/mapcomponent.h>
+#include <dtEntity/transformcomponent.h>
 #include <dtEntity/nodemasks.h>
 #include <osg/LineWidth>
 #include <osg/PolygonMode>
@@ -42,10 +43,10 @@ namespace dtEntity
    ////////////////////////////////////////////////////////////////////////////
    ////////////////////////////////////////////////////////////////////////////////
 
-   const StringId LayerComponent::TYPE(SID("Layer"));
-   const StringId LayerComponent::LayerId(SID("Layer"));
-   const StringId LayerComponent::AttachedComponentId(SID("AttachedComponent"));
-   const StringId LayerComponent::VisibleId(SID("Visible"));   
+   const StringId LayerComponent::TYPE(dtEntity::SID("Layer"));
+   const StringId LayerComponent::LayerId(dtEntity::SID("Layer"));
+   const StringId LayerComponent::AttachedComponentId(dtEntity::SID("AttachedComponent"));
+   const StringId LayerComponent::VisibleId(dtEntity::SID("Visible"));   
    
    ////////////////////////////////////////////////////////////////////////////
    LayerComponent::LayerComponent()
@@ -322,7 +323,7 @@ namespace dtEntity
    public:
 
       LocalBoundingBoxVisitor()
-         : osg::NodeVisitor(osg::NodeVisitor::TRAVERSE_ALL_CHILDREN)
+         : osg::NodeVisitor(osg::NodeVisitor::TRAVERSE_ACTIVE_CHILDREN)
          , mVisited(false)
       {}
 
@@ -382,7 +383,10 @@ namespace dtEntity
 
    ////////////////////////////////////////////////////////////////////////////
    ////////////////////////////////////////////////////////////////////////////
+   const StringId LayerSystem::TYPE(dtEntity::SID("Layer"));
 
+
+   ////////////////////////////////////////////////////////////////////////////
    LayerSystem::LayerSystem(EntityManager& em)
       : DefaultEntitySystem<LayerComponent>(em)
    {
@@ -434,14 +438,8 @@ namespace dtEntity
 
       LayerComponent* lc = mComponents[id];
 
-      dtEntity::TransformComponent* transform;
-      if(!GetEntityManager().GetComponent(id, transform, true))
-      {
-         return;
-      }
-
       osg::Node* node = lc->GetAttachedComponentNode();
-      if(node == NULL)
+      if(node == NULL || node->asTransform() == NULL)
       {
          return;
       }
@@ -527,7 +525,7 @@ namespace dtEntity
       GetEntityManager().GetEntity(id, entity);
 
       geode->setUserData(entity);
-      transform->GetGroup()->addChild(geode);
+      node->asGroup()->addChild(geode);
 
       // make box wireframe
       osg::ref_ptr<osg::StateSet> stateset = geode->getOrCreateStateSet();
@@ -545,7 +543,7 @@ namespace dtEntity
       stateset->setAttributeAndModes(polymode, osg::StateAttribute::OVERRIDE|osg::StateAttribute::ON);
       stateset->setMode(GL_LIGHTING, osg::StateAttribute::OFF);
       stateset->setMode(GL_DEPTH_TEST, osg::StateAttribute::OFF);
-      stateset->setRenderBinDetails(80, "RenderBin");
+      stateset->setRenderBinDetails(22000, "RenderBin");
    }
 
    ////////////////////////////////////////////////////////////////////////////////

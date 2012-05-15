@@ -24,8 +24,10 @@
 #include <dtEntity/componentfactories.h>
 #include <dtEntity/layerattachpointcomponent.h>
 #include <dtEntity/layercomponent.h>
-#include <dtEntity/logmanager.h>
 #include <dtEntity/mapcomponent.h>
+#include <dtEntity/matrixtransformcomponent.h>
+#include <dtEntity/positionattitudetransformcomponent.h>
+#include <dtEntity/staticmeshcomponent.h>
 #include <dtEntity/systemmessages.h>
 #include <dtEntity/windowmanager.h>
 
@@ -37,32 +39,32 @@
 #include <osgViewer/View>
 #include <osgViewer/ViewerEventHandlers>
 
+#ifdef _WIN32
+#include <direct.h>
+#endif
+
 namespace dtEntity
 {
    ////////////////////////////////////////////////////////////////////////////////
    // a simple log handler that forwards log messages to osg log system
-   class ConsoleLogHandler
-      : public LogListener
+    void ConsoleLogHandler::LogMessage(LogLevel::e level, const std::string& filename, const std::string& methodname, int linenumber,
+                   const std::string& msg)
    {
-    public:
-      virtual void LogMessage(LogLevel::e level, const std::string& filename, const std::string& methodname, int linenumber,
-                      const std::string& msg)
+	 std::ostream* strm;
+	 switch(level)
       {
-		 std::ostream* strm;
-		 switch(level)
-         {
-		 case  LogLevel::LVL_DEBUG   : strm = &osg::notify(osg::DEBUG_INFO); break;
-		 case  LogLevel::LVL_INFO    : strm = &osg::notify(osg::INFO); break;
-		 case  LogLevel::LVL_WARNING : strm = &osg::notify(osg::WARN); break;
-		 case  LogLevel::LVL_ERROR   : strm = &osg::notify(osg::FATAL); break;
-		 case  LogLevel::LVL_ALWAYS  : strm = &osg::notify(osg::ALWAYS); break;
-		 default: strm = &osg::notify(osg::ALWAYS);
-         }
-		 (*strm) << "File: " << filename << " Line: " << linenumber << " Message: " << msg << std::endl; 
-		 strm->flush();
-         
+	 case  LogLevel::LVL_DEBUG   : strm = &osg::notify(osg::DEBUG_INFO); break;
+	 case  LogLevel::LVL_INFO    : strm = &osg::notify(osg::INFO); break;
+	 case  LogLevel::LVL_WARNING : strm = &osg::notify(osg::WARN); break;
+	 case  LogLevel::LVL_ERROR   : strm = &osg::notify(osg::FATAL); break;
+	 case  LogLevel::LVL_ALWAYS  : strm = &osg::notify(osg::ALWAYS); break;
+	 default: strm = &osg::notify(osg::ALWAYS);
       }
-   };
+    std::string fn = filename.size() < 30 ? filename : filename.substr(filename.size() - 30, filename.size() - 1);
+    (*strm) << "File: " << fn << " Line: " << linenumber << " Message: " << msg << std::endl;
+	 strm->flush();
+      
+   }
 
    ////////////////////////////////////////////////////////////////////////////////
    bool SetupDataPaths(int argc, char** argv, bool checkPaths)
@@ -70,14 +72,19 @@ namespace dtEntity
       std::string projectassets = "";
       std::string baseassets = "";
 
+#ifdef _WIN32
+      std::string cwd = _getcwd(NULL, 0);
+#else
+      std::string cwd = getcwd(NULL, 0);
+#endif
       if(osgDB::fileExists("ProjectAssets")) 
       {
-         projectassets = osgDB::getFilePath(argv[0]) + osgDB::getNativePathSeparator() + "ProjectAssets";
+         projectassets = cwd + osgDB::getNativePathSeparator() + "ProjectAssets";
       }
 
       if(osgDB::fileExists("BaseAssets")) 
       {
-         projectassets = osgDB::getFilePath(argv[0]) + osgDB::getNativePathSeparator() + "BaseAssets";
+         baseassets = cwd + osgDB::getNativePathSeparator() + "BaseAssets";
       }
 
       const char* env_projectassets = getenv("DTENTITY_PROJECTASSETS");
@@ -141,6 +148,7 @@ namespace dtEntity
       const char separator = ':';
 #endif
 
+      // split project assets string by ";" or ":" and add as separate paths
       if(!projectassets.empty())
       {
          std::vector<std::string> pathsplit = dtEntity::split(projectassets, separator);
@@ -335,7 +343,7 @@ namespace dtEntity
       em.GetEntitySystem(ApplicationSystem::TYPE, appsystem);
 
       unsigned int contextId;
-      bool success = appsystem->GetWindowManager()->OpenWindow("defaultView", SID("root"), *traits, contextId);
+      bool success = appsystem->GetWindowManager()->OpenWindow("defaultView", dtEntity::SID("root"), *traits, contextId);
       if(!success)
       {
          LOG_ERROR("Could not open window, exiting!");

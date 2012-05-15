@@ -32,8 +32,10 @@ namespace dtEntity
       em.RegisterMessageType<EndOfFrameMessage>(EndOfFrameMessage::TYPE);
       em.RegisterMessageType<EntityAddedToSceneMessage>(EntityAddedToSceneMessage::TYPE);
       em.RegisterMessageType<EntityDeselectedMessage>(EntityDeselectedMessage::TYPE);
+      em.RegisterMessageType<EntityNameUpdatedMessage>(EntityNameUpdatedMessage::TYPE);
       em.RegisterMessageType<EntityRemovedFromSceneMessage>(EntityRemovedFromSceneMessage::TYPE);
       em.RegisterMessageType<EntitySelectedMessage>(EntitySelectedMessage::TYPE);
+      em.RegisterMessageType<EntitySpawnedMessage>(EntitySpawnedMessage::TYPE);
       em.RegisterMessageType<EntitySystemAddedMessage>(EntitySystemAddedMessage::TYPE);
       em.RegisterMessageType<EntitySystemRemovedMessage>(EntitySystemRemovedMessage::TYPE);
       em.RegisterMessageType<MapBeginLoadMessage>(MapBeginLoadMessage::TYPE);
@@ -42,6 +44,8 @@ namespace dtEntity
       em.RegisterMessageType<MapUnloadedMessage>(MapUnloadedMessage::TYPE);
       em.RegisterMessageType<MeshChangedMessage>(MeshChangedMessage::TYPE);
       em.RegisterMessageType<PostFrameMessage>(PostFrameMessage::TYPE);
+      em.RegisterMessageType<ResourceChangedMessage>(ResourceChangedMessage::TYPE);      
+      em.RegisterMessageType<ResourceLoadedMessage>(ResourceLoadedMessage::TYPE);      
       em.RegisterMessageType<SceneLoadedMessage>(SceneLoadedMessage::TYPE);
       em.RegisterMessageType<SceneUnloadedMessage>(SceneUnloadedMessage::TYPE);
       em.RegisterMessageType<SpawnerAddedMessage>(SpawnerAddedMessage::TYPE);
@@ -54,12 +58,12 @@ namespace dtEntity
       em.RegisterMessageType<VisibilityChangedMessage>(VisibilityChangedMessage::TYPE);
       em.RegisterMessageType<WindowCreatedMessage>(WindowCreatedMessage::TYPE);
       em.RegisterMessageType<WindowClosedMessage>(WindowClosedMessage::TYPE);      
-
+            
    }
    ////////////////////////////////////////////////////////////////////////////////
-   const MessageType CameraAddedMessage::TYPE(SID("CameraAddedMessage"));
-   const StringId CameraAddedMessage::AboutEntityId(SID("AboutEntity"));
-   const StringId CameraAddedMessage::ContextIdId(SID("ContextId"));
+   const MessageType CameraAddedMessage::TYPE(dtEntity::SID("CameraAddedMessage"));
+   const StringId CameraAddedMessage::AboutEntityId(dtEntity::SID("AboutEntity"));
+   const StringId CameraAddedMessage::ContextIdId(dtEntity::SID("ContextId"));
 
    CameraAddedMessage::CameraAddedMessage()
       : Message(TYPE)
@@ -69,8 +73,8 @@ namespace dtEntity
    }
 
    ////////////////////////////////////////////////////////////////////////////////
-   const MessageType CameraRemovedMessage::TYPE(SID("CameraRemovedMessage"));
-   const StringId CameraRemovedMessage::AboutEntityId(SID("AboutEntity"));
+   const MessageType CameraRemovedMessage::TYPE(dtEntity::SID("CameraRemovedMessage"));
+   const StringId CameraRemovedMessage::AboutEntityId(dtEntity::SID("AboutEntity"));
 
    CameraRemovedMessage::CameraRemovedMessage()
       : Message(TYPE)
@@ -89,7 +93,7 @@ namespace dtEntity
    }
 
    ////////////////////////////////////////////////////////////////////////////////
-   const MessageType EndOfFrameMessage::TYPE(SID("EndOfFrameMessage"));
+   const MessageType EndOfFrameMessage::TYPE(dtEntity::SID("EndOfFrameMessage"));
 
    EndOfFrameMessage::EndOfFrameMessage()
       : TickMessage(TYPE)
@@ -97,11 +101,12 @@ namespace dtEntity
    }
 
    ////////////////////////////////////////////////////////////////////////////////
-   const MessageType EntityAddedToSceneMessage::TYPE(SID("EntityAddedToSceneMessage"));
-   const StringId EntityAddedToSceneMessage::AboutEntityId(SID("AboutEntity"));
-   const StringId EntityAddedToSceneMessage::EntityNameId(SID("EntityName"));
-   const StringId EntityAddedToSceneMessage::UniqueIdId(SID("UniqueId"));
-   const StringId EntityAddedToSceneMessage::MapNameId(SID("MapName"));
+   const MessageType EntityAddedToSceneMessage::TYPE(dtEntity::SID("EntityAddedToSceneMessage"));
+   const StringId EntityAddedToSceneMessage::AboutEntityId(dtEntity::SID("AboutEntity"));
+   const StringId EntityAddedToSceneMessage::EntityNameId(dtEntity::SID("EntityName"));
+   const StringId EntityAddedToSceneMessage::UniqueIdId(dtEntity::SID("UniqueId"));
+   const StringId EntityAddedToSceneMessage::MapNameId(dtEntity::SID("MapName"));
+   const StringId EntityAddedToSceneMessage::VisibleInEntityListId(dtEntity::SID("VisibleInEntityList"));
 
    EntityAddedToSceneMessage::EntityAddedToSceneMessage()
       : Message(TYPE)
@@ -110,11 +115,12 @@ namespace dtEntity
       this->Register(EntityNameId, &mEntityName);
       this->Register(UniqueIdId, &mUniqueId);
       this->Register(MapNameId, &mMapName);
+      this->Register(VisibleInEntityListId, &mVisibleInEntityList);
    }
 
    ////////////////////////////////////////////////////////////////////////////////
-   const MessageType EntityDeselectedMessage::TYPE(SID("EntityDeselectedMessage"));
-   const StringId EntityDeselectedMessage::AboutEntityId(SID("AboutEntity"));
+   const MessageType EntityDeselectedMessage::TYPE(dtEntity::SID("EntityDeselectedMessage"));
+   const StringId EntityDeselectedMessage::AboutEntityId(dtEntity::SID("AboutEntity"));
 
    EntityDeselectedMessage::EntityDeselectedMessage()
       : Message(TYPE)
@@ -123,11 +129,26 @@ namespace dtEntity
    }
 
    ////////////////////////////////////////////////////////////////////////////////
-   const MessageType EntityRemovedFromSceneMessage::TYPE(SID("EntityRemovedFromSceneMessage"));
-   const StringId EntityRemovedFromSceneMessage::AboutEntityId(SID("AboutEntity"));
-   const StringId EntityRemovedFromSceneMessage::EntityNameId(SID("EntityName"));
-   const StringId EntityRemovedFromSceneMessage::UniqueIdId(SID("UniqueId"));
-   const StringId EntityRemovedFromSceneMessage::MapNameId(SID("MapName"));
+   const MessageType EntityNameUpdatedMessage::TYPE(dtEntity::SID("EntityNameUpdatedMessage"));
+   const StringId EntityNameUpdatedMessage::AboutEntityId(dtEntity::SID("AboutEntity"));
+   const StringId EntityNameUpdatedMessage::EntityNameId(dtEntity::SID("EntityName"));
+   const StringId EntityNameUpdatedMessage::UniqueIdId(dtEntity::SID("UniqueId"));
+
+   EntityNameUpdatedMessage::EntityNameUpdatedMessage()
+      : Message(TYPE)
+   {
+      Register(AboutEntityId, &mAboutEntity);
+      Register(EntityNameId, &mEntityName);
+      Register(UniqueIdId, &mUniqueId);
+   }
+
+   ////////////////////////////////////////////////////////////////////////////////
+   const MessageType EntityRemovedFromSceneMessage::TYPE(dtEntity::SID("EntityRemovedFromSceneMessage"));
+   const StringId EntityRemovedFromSceneMessage::AboutEntityId(dtEntity::SID("AboutEntity"));
+   const StringId EntityRemovedFromSceneMessage::EntityNameId(dtEntity::SID("EntityName"));
+   const StringId EntityRemovedFromSceneMessage::UniqueIdId(dtEntity::SID("UniqueId"));
+   const StringId EntityRemovedFromSceneMessage::MapNameId(dtEntity::SID("MapName"));
+   const StringId EntityRemovedFromSceneMessage::VisibleInEntityListId(dtEntity::SID("VisibleInEntityList"));
 
    EntityRemovedFromSceneMessage::EntityRemovedFromSceneMessage()
       : Message(TYPE)
@@ -136,11 +157,12 @@ namespace dtEntity
       this->Register(EntityNameId, &mEntityName);
       this->Register(UniqueIdId, &mUniqueId);
       this->Register(MapNameId, &mMapName);
+      this->Register(VisibleInEntityListId, &mVisibleInEntityList);
    }
 
    ////////////////////////////////////////////////////////////////////////////////
-   const MessageType EntitySelectedMessage::TYPE(SID("EntitySelectedMessage"));
-   const StringId EntitySelectedMessage::AboutEntityId(SID("AboutEntity"));
+   const MessageType EntitySelectedMessage::TYPE(dtEntity::SID("EntitySelectedMessage"));
+   const StringId EntitySelectedMessage::AboutEntityId(dtEntity::SID("AboutEntity"));
 
    EntitySelectedMessage::EntitySelectedMessage()
       : Message(TYPE)
@@ -149,9 +171,21 @@ namespace dtEntity
    }
 
    ////////////////////////////////////////////////////////////////////////////////
-   const MessageType EntitySystemAddedMessage::TYPE(SID("EntitySystemAddedMessage"));
-   const StringId EntitySystemAddedMessage::ComponentTypeId(SID("ComponentType"));
-   const StringId EntitySystemAddedMessage::ComponentTypeStringId(SID("ComponentTypeString"));
+   const MessageType EntitySpawnedMessage::TYPE(dtEntity::SID("EntitySpawnedMessage"));
+   const StringId EntitySpawnedMessage::AboutEntityId(dtEntity::SID("AboutEntity"));
+   const StringId EntitySpawnedMessage::SpawnerNameId(dtEntity::SID("SpawnerName"));
+
+   EntitySpawnedMessage::EntitySpawnedMessage()
+      : Message(TYPE)
+   {
+      Register(AboutEntityId, &mAboutEntity);
+      Register(SpawnerNameId, &mSpawnerName);
+   }
+
+   ////////////////////////////////////////////////////////////////////////////////
+   const MessageType EntitySystemAddedMessage::TYPE(dtEntity::SID("EntitySystemAddedMessage"));
+   const StringId EntitySystemAddedMessage::ComponentTypeId(dtEntity::SID("ComponentType"));
+   const StringId EntitySystemAddedMessage::ComponentTypeStringId(dtEntity::SID("ComponentTypeString"));
 
    EntitySystemAddedMessage::EntitySystemAddedMessage()
       : Message(TYPE)
@@ -161,9 +195,9 @@ namespace dtEntity
    }
 
    ////////////////////////////////////////////////////////////////////////////////
-   const MessageType EntitySystemRemovedMessage::TYPE(SID("EntitySystemRemovedMessage"));
-   const StringId EntitySystemRemovedMessage::ComponentTypeId(SID("ComponentType"));
-   const StringId EntitySystemRemovedMessage::ComponentTypeStringId(SID("ComponentTypeString"));
+   const MessageType EntitySystemRemovedMessage::TYPE(dtEntity::SID("EntitySystemRemovedMessage"));
+   const StringId EntitySystemRemovedMessage::ComponentTypeId(dtEntity::SID("ComponentType"));
+   const StringId EntitySystemRemovedMessage::ComponentTypeStringId(dtEntity::SID("ComponentTypeString"));
 
    EntitySystemRemovedMessage::EntitySystemRemovedMessage()
       : Message(TYPE)
@@ -173,14 +207,14 @@ namespace dtEntity
    }
 
    ////////////////////////////////////////////////////////////////////////////////
-   const MessageType TickMessage::TYPE(SID("TickMessage"));
-   const StringId TickMessage::DeltaSimTimeId(SID("DeltaSimTime"));
-   const StringId TickMessage::DeltaRealTimeId(SID("DeltaRealTime"));
-   const StringId TickMessage::SimTimeScaleId(SID("SimTimeScale"));
-   const StringId TickMessage::SimulationTimeId(SID("SimulationTime"));
+   const MessageType TickMessage::TYPE(dtEntity::SID("TickMessage"));
+   const StringId TickMessage::DeltaSimTimeId(dtEntity::SID("DeltaSimTime"));
+   const StringId TickMessage::DeltaRealTimeId(dtEntity::SID("DeltaRealTime"));
+   const StringId TickMessage::SimTimeScaleId(dtEntity::SID("SimTimeScale"));
+   const StringId TickMessage::SimulationTimeId(dtEntity::SID("SimulationTime"));
 
    ////////////////////////////////////////////////////////////////////////////////
-   const MessageType PostFrameMessage::TYPE(SID("PostFrameMessage"));
+   const MessageType PostFrameMessage::TYPE(dtEntity::SID("PostFrameMessage"));
 
    PostFrameMessage::PostFrameMessage()
       : TickMessage(TYPE)
@@ -188,10 +222,30 @@ namespace dtEntity
    }
 
    ////////////////////////////////////////////////////////////////////////////////
-   const MessageType SpawnerAddedMessage::TYPE(SID("SpawnerAddedMessage"));
-   const StringId SpawnerAddedMessage::NameId(SID("Name"));
-   const StringId SpawnerAddedMessage::MapNameId(SID("MapName"));
-   const StringId SpawnerAddedMessage::ParentNameId(SID("ParentName"));
+   const MessageType ResourceChangedMessage::TYPE(dtEntity::SID("ResourceChanged"));
+   const StringId ResourceChangedMessage::PathId(dtEntity::SID("Path"));
+   
+   ResourceChangedMessage::ResourceChangedMessage()
+      : Message(TYPE)
+   {
+      this->Register(PathId, &mPath);
+   }
+
+   ////////////////////////////////////////////////////////////////////////////////
+   const MessageType ResourceLoadedMessage::TYPE(dtEntity::SID("ResourceLoadedMessage"));
+   const StringId ResourceLoadedMessage::PathId(dtEntity::SID("Path"));
+   
+   ResourceLoadedMessage::ResourceLoadedMessage()
+      : Message(TYPE)
+   {
+      this->Register(PathId, &mPath);
+   }
+
+   ////////////////////////////////////////////////////////////////////////////////
+   const MessageType SpawnerAddedMessage::TYPE(dtEntity::SID("SpawnerAddedMessage"));
+   const StringId SpawnerAddedMessage::NameId(dtEntity::SID("Name"));
+   const StringId SpawnerAddedMessage::MapNameId(dtEntity::SID("MapName"));
+   const StringId SpawnerAddedMessage::ParentNameId(dtEntity::SID("ParentName"));
 
    SpawnerAddedMessage::SpawnerAddedMessage()
       : Message(TYPE)
@@ -202,11 +256,11 @@ namespace dtEntity
    }
 
    ////////////////////////////////////////////////////////////////////////////////
-   const MessageType SpawnerModifiedMessage::TYPE(SID("SpawnerModifiedMessage"));
-   const StringId SpawnerModifiedMessage::NameId(SID("Name"));
-   const StringId SpawnerModifiedMessage::MapNameId(SID("MapName"));
-   const StringId SpawnerModifiedMessage::OldCategoryId(SID("OldCategory"));
-   const StringId SpawnerModifiedMessage::NewCategoryId(SID("NewCategory"));
+   const MessageType SpawnerModifiedMessage::TYPE(dtEntity::SID("SpawnerModifiedMessage"));
+   const StringId SpawnerModifiedMessage::NameId(dtEntity::SID("Name"));
+   const StringId SpawnerModifiedMessage::MapNameId(dtEntity::SID("MapName"));
+   const StringId SpawnerModifiedMessage::OldCategoryId(dtEntity::SID("OldCategory"));
+   const StringId SpawnerModifiedMessage::NewCategoryId(dtEntity::SID("NewCategory"));
 
    SpawnerModifiedMessage::SpawnerModifiedMessage()
       : Message(TYPE)
@@ -218,10 +272,10 @@ namespace dtEntity
    }
 
    ////////////////////////////////////////////////////////////////////////////////
-   const MessageType SpawnerRemovedMessage::TYPE(SID("SpawnerRemovedMessage"));
-   const StringId SpawnerRemovedMessage::NameId(SID("Name"));
-   const StringId SpawnerRemovedMessage::MapNameId(SID("MapName"));
-   const StringId SpawnerRemovedMessage::CategoryId(SID("Category"));
+   const MessageType SpawnerRemovedMessage::TYPE(dtEntity::SID("SpawnerRemovedMessage"));
+   const StringId SpawnerRemovedMessage::NameId(dtEntity::SID("Name"));
+   const StringId SpawnerRemovedMessage::MapNameId(dtEntity::SID("MapName"));
+   const StringId SpawnerRemovedMessage::CategoryId(dtEntity::SID("Category"));
 
    SpawnerRemovedMessage::SpawnerRemovedMessage()
       : Message(TYPE)
@@ -232,10 +286,10 @@ namespace dtEntity
    }
 
    ////////////////////////////////////////////////////////////////////////////////
-   const MessageType MapBeginLoadMessage::TYPE(SID("MapBeginLoadMessage"));
-   const StringId MapBeginLoadMessage::MapPathId(SID("MapPath"));
-   const StringId MapBeginLoadMessage::DataPathId(SID("DataPath"));
-   const StringId MapBeginLoadMessage::SaveOrderId(SID("SaveOrder"));
+   const MessageType MapBeginLoadMessage::TYPE(dtEntity::SID("MapBeginLoadMessage"));
+   const StringId MapBeginLoadMessage::MapPathId(dtEntity::SID("MapPath"));
+   const StringId MapBeginLoadMessage::DataPathId(dtEntity::SID("DataPath"));
+   const StringId MapBeginLoadMessage::SaveOrderId(dtEntity::SID("SaveOrder"));
 
    MapBeginLoadMessage::MapBeginLoadMessage()
       : Message(TYPE)
@@ -246,8 +300,8 @@ namespace dtEntity
    }
 
    ////////////////////////////////////////////////////////////////////////////////
-   const MessageType MapBeginUnloadMessage::TYPE(SID("MapBeginUnloadMessage"));
-   const StringId MapBeginUnloadMessage::MapPathId(SID("MapPath"));
+   const MessageType MapBeginUnloadMessage::TYPE(dtEntity::SID("MapBeginUnloadMessage"));
+   const StringId MapBeginUnloadMessage::MapPathId(dtEntity::SID("MapPath"));
 
    MapBeginUnloadMessage::MapBeginUnloadMessage()
       : Message(TYPE)
@@ -256,10 +310,10 @@ namespace dtEntity
    }
 
    ////////////////////////////////////////////////////////////////////////////////
-   const MessageType MapLoadedMessage::TYPE(SID("MapLoadedMessage"));
-   const StringId MapLoadedMessage::MapPathId(SID("MapPath"));
-   const StringId MapLoadedMessage::DataPathId(SID("DataPath"));
-   const StringId MapLoadedMessage::SaveOrderId(SID("SaveOrder"));
+   const MessageType MapLoadedMessage::TYPE(dtEntity::SID("MapLoadedMessage"));
+   const StringId MapLoadedMessage::MapPathId(dtEntity::SID("MapPath"));
+   const StringId MapLoadedMessage::DataPathId(dtEntity::SID("DataPath"));
+   const StringId MapLoadedMessage::SaveOrderId(dtEntity::SID("SaveOrder"));
 
    MapLoadedMessage::MapLoadedMessage()
       : Message(TYPE)
@@ -270,8 +324,8 @@ namespace dtEntity
    }
 
    ////////////////////////////////////////////////////////////////////////////////
-   const MessageType MapUnloadedMessage::TYPE(SID("MapUnloadedMessage"));
-   const StringId MapUnloadedMessage::MapPathId(SID("MapPath"));
+   const MessageType MapUnloadedMessage::TYPE(dtEntity::SID("MapUnloadedMessage"));
+   const StringId MapUnloadedMessage::MapPathId(dtEntity::SID("MapPath"));
 
    MapUnloadedMessage::MapUnloadedMessage()
       : Message(TYPE)
@@ -280,9 +334,9 @@ namespace dtEntity
    }
 
    ////////////////////////////////////////////////////////////////////////////////
-   const MessageType MeshChangedMessage::TYPE(SID("MeshChangedMessage"));
-   const StringId MeshChangedMessage::AboutEntityId(SID("AboutEntity"));
-   const StringId MeshChangedMessage::FilePathId(SID("FilePathId"));
+   const MessageType MeshChangedMessage::TYPE(dtEntity::SID("MeshChangedMessage"));
+   const StringId MeshChangedMessage::AboutEntityId(dtEntity::SID("AboutEntity"));
+   const StringId MeshChangedMessage::FilePathId(dtEntity::SID("FilePathId"));
 
    MeshChangedMessage::MeshChangedMessage()
       : Message(TYPE)
@@ -292,8 +346,8 @@ namespace dtEntity
    }
 
    ////////////////////////////////////////////////////////////////////////////////
-   const MessageType SceneLoadedMessage::TYPE(SID("SceneLoadedMessage"));
-   const StringId SceneLoadedMessage::SceneNameId(SID("SceneName"));
+   const MessageType SceneLoadedMessage::TYPE(dtEntity::SID("SceneLoadedMessage"));
+   const StringId SceneLoadedMessage::SceneNameId(dtEntity::SID("SceneName"));
 
     SceneLoadedMessage::SceneLoadedMessage()
       : Message(TYPE)
@@ -302,7 +356,7 @@ namespace dtEntity
    }
 
    ////////////////////////////////////////////////////////////////////////////////
-   const MessageType SceneUnloadedMessage::TYPE(SID("SceneUnloadedMessage"));
+   const MessageType SceneUnloadedMessage::TYPE(dtEntity::SID("SceneUnloadedMessage"));
 
    SceneUnloadedMessage::SceneUnloadedMessage()
       : Message(TYPE)
@@ -310,7 +364,7 @@ namespace dtEntity
    }
 
    ////////////////////////////////////////////////////////////////////////////////
-   const MessageType StartSystemMessage::TYPE(SID("StartSystemMessage"));
+   const MessageType StartSystemMessage::TYPE(dtEntity::SID("StartSystemMessage"));
 
    StartSystemMessage::StartSystemMessage()
       : Message(TYPE)
@@ -318,7 +372,7 @@ namespace dtEntity
    }
 
    ////////////////////////////////////////////////////////////////////////////////
-   const MessageType StopSystemMessage::TYPE(SID("StopSystemMessage"));
+   const MessageType StopSystemMessage::TYPE(dtEntity::SID("StopSystemMessage"));
 
    StopSystemMessage::StopSystemMessage()
       : Message(TYPE)
@@ -346,9 +400,9 @@ namespace dtEntity
    }
 
    ////////////////////////////////////////////////////////////////////////////////
-   const MessageType TimeChangedMessage::TYPE(SID("TimeChangedMessage"));
-   const StringId TimeChangedMessage::SimulationTimeId(SID("SimulationTime"));
-   const StringId TimeChangedMessage::TimeScaleId(SID("TimeScale"));
+   const MessageType TimeChangedMessage::TYPE(dtEntity::SID("TimeChangedMessage"));
+   const StringId TimeChangedMessage::SimulationTimeId(dtEntity::SID("SimulationTime"));
+   const StringId TimeChangedMessage::TimeScaleId(dtEntity::SID("TimeScale"));
    
    TimeChangedMessage::TimeChangedMessage() 
       : Message(TYPE)
@@ -358,9 +412,9 @@ namespace dtEntity
    }
 
    ////////////////////////////////////////////////////////////////////////////////
-   const MessageType VisibilityChangedMessage::TYPE(SID("VisibilityChangedMessage"));
-   const StringId VisibilityChangedMessage::AboutEntityId(SID("AboutEntity"));
-   const StringId VisibilityChangedMessage::VisibleId(SID("Visible"));
+   const MessageType VisibilityChangedMessage::TYPE(dtEntity::SID("VisibilityChangedMessage"));
+   const StringId VisibilityChangedMessage::AboutEntityId(dtEntity::SID("AboutEntity"));
+   const StringId VisibilityChangedMessage::VisibleId(dtEntity::SID("Visible"));
 
    VisibilityChangedMessage::VisibilityChangedMessage()
       : Message(TYPE)

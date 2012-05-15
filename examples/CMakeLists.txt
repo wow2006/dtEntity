@@ -1,8 +1,8 @@
 IF(BUILD_EXAMPLES)
-  ADD_SUBDIRECTORY(testDebugDrawManager)
-  ADD_SUBDIRECTORY(testEntity)
-  ADD_SUBDIRECTORY(testWheels)
-  ADD_SUBDIRECTORY(testEntitySystemPlugin)
+ADD_SUBDIRECTORY(testDebugDrawManager)
+ADD_SUBDIRECTORY(testEntity)
+ADD_SUBDIRECTORY(testWheels)
+ADD_SUBDIRECTORY(testEntitySystemPlugin)
 
   IF(BUILD_PHYSX)
 	ADD_SUBDIRECTORY(testPhysX)

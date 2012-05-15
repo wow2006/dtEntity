@@ -21,7 +21,6 @@
 #include <dtEntity/textlabelcomponent.h>
 
 #include <dtEntity/nodemasks.h>
-#include <dtEntity/osgcomponents.h>
 #include <dtEntity/stringid.h>
 #include <iostream>
 #include <osg/BlendFunc>
@@ -598,7 +597,8 @@ namespace dtEntity
    }
 
    ////////////////////////////////////////////////////////////////////////////
-   /////////////////////////////////////////////////////////////
+   ////////////////////////////////////////////////////////////////////////////
+   const dtEntity::StringId TextLabelSystem::TYPE(dtEntity::SID("TextLabel"));
    const dtEntity::StringId TextLabelSystem::EnabledId(dtEntity::SID("Enabled"));
    
    ///////////////

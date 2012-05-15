@@ -25,8 +25,8 @@
 #include <osg/ref_ptr>
 #include <dtEntity/export.h>
 #include <dtEntity/entitysystem.h>
-#include <dtEntity/osgcomponents.h>
 #include <dtEntity/component.h>
+#include <dtEntity/message.h>
 #include <dtEntity/scriptaccessor.h>
 #include <dtEntity/stringid.h>
 #include <osg/Group>
@@ -50,7 +50,7 @@ namespace dtEntity
 
 
 	/**
-    * An entity system for holding the Delta3D application
+    * An entity system for holding the dtEntity application
     * and providing some time management methods
 	 */
    class DT_ENTITY_EXPORT ApplicationSystem
@@ -68,24 +68,27 @@ namespace dtEntity
       ApplicationSystem(EntityManager& em);
       ~ApplicationSystem();
 
+      void OnPropertyChanged(StringId propname, Property &prop);
+
       ComponentType GetComponentType() const { return TYPE; }
 
       void EmitTickMessagesAndQueuedMessages();
+
+
+      /// Returns the UniqueID of this ApplicationSystem
+      std::string GetUniqueID() { return mApplicationSystemInfo.mUniqueID; }
+
 
       /**
        * @return The scale of realtime the GameManager is running at.
        */
       float GetTimeScale() const;
+      void SetTimeScale(float v);
 
       /**
        * @return the current simulation time. This is in SECONDs.
        */
       double GetSimulationTime() const;
-
-      /**
-       * @return the current simulation time. This is in SECONDS.
-       */
-      double GetSimTimeSinceStartup() const;
 
       /**
        * @return the current simulation wall-clock time. This is in MICRO SECONDS (seconds * 1000000LL).
@@ -140,6 +143,20 @@ namespace dtEntity
 
    private:
 
+      /// Holds basic information about the ApplicationSystem instance
+      /**
+      *  For now we just include a UniqueID (string); later on this might
+      *  include additional fields like a name, the network address, ...
+      *  The single members are accessed through specific public methods
+      *  like GetUniqueID().
+      */
+      struct ApplicationSystemInfo
+      {
+         std::string mUniqueID;
+      };
+
+      ApplicationSystemInfo mApplicationSystemInfo;
+
       FloatProperty mTimeScale;
       ArrayProperty mArgvArray;
 
@@ -155,11 +172,6 @@ namespace dtEntity
          return new DoubleProperty(GetSimulationTime());
       }
 
-      Property* ScriptGetSimTimeSinceStartup(const PropertyArgs& args)
-      {
-         return new DoubleProperty(GetSimTimeSinceStartup());
-      }
-
       Property* ScriptGetSimulationClockTime(const PropertyArgs& args)
       {
          return new DoubleProperty(GetSimulationClockTime());
@@ -173,7 +185,6 @@ namespace dtEntity
       }   
 
       Property* ScriptChangeTimeSettings(const PropertyArgs& args);
-
 
       
       // string holding country code

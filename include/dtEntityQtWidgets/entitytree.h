@@ -77,7 +77,7 @@ namespace dtEntityQtWidgets
       void appendChild(EntityTreeItem* child) { mChildItems.append(child); }
       bool removeChild(EntityTreeItem* child) { return mChildItems.removeOne(child); }
       EntityTreeItem* child(int row) { return mChildItems.value(row); }
-      int childCount() const { return mChildItems.count(); }
+      unsigned int childCount() const { return mChildItems.count(); }
       EntityTreeItem* parent() { return mParentItem; }
       int row() const { return mParentItem ? mParentItem->mChildItems.indexOf(const_cast<EntityTreeItem*>(this)) : 0; }
       EntityTreeType::e GetItemType() const { return mItemType; }
@@ -86,7 +86,7 @@ namespace dtEntityQtWidgets
       QString mName;
       QString mMapName;
       unsigned int mSaveOrder; // for maps
-      
+
    protected:
 
       QList<EntityTreeItem*> mChildItems;
@@ -94,7 +94,7 @@ namespace dtEntityQtWidgets
       EntityTreeType::e mItemType;
    };
 
-   
+
    ////////////////////////////////////////////////////////////////////////////////
    class ENTITYQTWIDGETS_EXPORT EntityTreeModel
       : public QAbstractItemModel
@@ -103,7 +103,7 @@ namespace dtEntityQtWidgets
 
    public:
 
-      EntityTreeModel(dtEntity::EntityManager& em);
+      EntityTreeModel(dtEntity::EntityManager& em, bool hideInvisible = true, bool showEntitySystems = true, bool showSpawners = true);
       ~EntityTreeModel();
 
       Qt::DropActions supportedDropActions() const;
@@ -120,11 +120,12 @@ namespace dtEntityQtWidgets
       QModelIndex GetSpawnerIndex(EntityTreeItem* item, const QString& spawnerName);
 
       void EnqueueMessage(const dtEntity::Message& m);
-      void EmitMoveMapToRow(const QString& mapname, int row);
+      void EmitMoveMapToRow(const QString& mapname, unsigned int row);
 
       void OnEntitySelected(const dtEntity::Message& msg);
       void OnEntityDeselected(const dtEntity::Message& msg);
       void OnEnterWorld(const dtEntity::Message& msg);
+      void OnEntityNameUpdated(const dtEntity::Message& msg);
       void OnLeaveWorld(const dtEntity::Message& msg);
       void OnMapBeginAdd(const dtEntity::Message& msg);
       void OnMapRemoved(const dtEntity::Message& msg);
@@ -138,9 +139,6 @@ namespace dtEntityQtWidgets
 
       dtEntity::MessageFunctor& GetEnqueueFunctor() { return mEnqueueFunctor; }
 
-   public slots:      
-     
-      void ProcessMessages();
       QModelIndex parent(const QModelIndex &index) const;
       QModelIndex index(int row, int column, const QModelIndex &parent) const;
       int rowCount(const QModelIndex &parent) const;
@@ -148,6 +146,10 @@ namespace dtEntityQtWidgets
       QVariant data(const QModelIndex &index, int role = Qt::DisplayRole) const;
       QVariant headerData(int section, Qt::Orientation orientation, int role) const;
       bool setData(const QModelIndex &index, const QVariant &value, int role = Qt::EditRole);
+
+   public slots:
+
+      void ProcessMessages();
       void OnShowErrorMessage(const QString&);
 
    signals:
@@ -158,17 +160,21 @@ namespace dtEntityQtWidgets
       void EntityWasDeselected(const QModelIndex&);
       void MoveEntityToMap(dtEntity::EntityId, const QString& mapname);
       void MoveSpawnerToMap(const QString& name, const QString& oldmapname, const QString& newmapname);
-      void MoveMapToRow(const QString& mapname, int saveorder);
+      void MoveMapToRow(const QString& mapname, unsigned int saveorder);
 
    private:
       void RemoveEntryFromRoot(const QString& name, EntityTreeType::e t);
-      
+
       EntityTreeItem* mRootItem;
       dtEntity::MessagePump mMessagePump;
       dtEntity::MessageFunctor mEnqueueFunctor;
       dtEntity::EntityManager* mEntityManager;
 
       EntityTreeItem* mEntitySystemRootItem;
+
+      bool mHideInvisible;
+      bool mShowSpawners;
+      bool mShowEntitySystems;
    };
 
 
@@ -179,12 +185,39 @@ namespace dtEntityQtWidgets
       Q_OBJECT
 
    public:
-      
+
+      ////////////////////////////////////////////////////////////////////////////////
+      class ENTITYQTWIDGETS_EXPORT ContextMenuFactory : public osg::Referenced
+      {
+      public:
+         virtual ~ContextMenuFactory() {}
+         virtual void ShowContextMenu(const QModelIndex& index, EntityTreeView* view, const QPoint& position);
+      };
+
       EntityTreeView(QWidget *parent = 0);
 
       virtual ~EntityTreeView();
       void SetModel(QAbstractItemModel* model);
       QTreeView* GetTreeView() const { return mTreeView; }
+
+      QMenu& GetAddItemMenu() { return mAddItemMenu; }
+      QMenu& GetAddItemMenuItemSelected() { return mAddItemMenuItemSelected; }
+      QAction* GetDeleteEntityAction() { return mDeleteEntityAction; }
+      QAction* GetJumpToEntityAction() { return mJumpToEntityAction; }
+      QAction* GetDeleteSpawnerAction() { return mDeleteSpawnerAction; }
+      QAction* GetSpawnSpawnerAction() { return mSpawnSpawnerAction; }
+      QAction* GetAddEntityAction() { return mAddEntityAction; }
+      QAction* GetAddNewMapAction() { return mAddNewMapAction; }
+      QAction* GetAddExistingMapAction() { return mAddExistingMapAction; }
+      QAction* GetAddSpawnerAction() { return mAddSpawnerAction; }
+      QAction* GetAddChildSpawnerAction () { return mAddChildSpawnerAction; }
+      QAction* GetUnloadMapAction() { return mUnloadMapAction; }
+      QAction* GetSaveMapCopyAction() { return mSaveMapCopyAction; }
+      QAction* GetSaveMapAction() { return mSaveMapAction; }
+
+      void SetContextMenuFactory(ContextMenuFactory* f) { mContextMenuFactory = f; }
+      ContextMenuFactory* GetContextMenuFactory() { return mContextMenuFactory; }
+      QModelIndex GetContextMenuSelectedIndex() const {  return mContextMenuSelectedIndex; }
 
    signals:
 
@@ -221,7 +254,7 @@ namespace dtEntityQtWidgets
    protected slots:
 
       void OnDoubleClick(const QModelIndex&);
-      void ShowContextMenu(const QPoint&);     
+      void ShowContextMenu(const QPoint&);
       void OnDeleteEntityAction(bool);
       void OnJumpToEntityAction(bool);
       void OnAddEntityAction(bool);
@@ -244,6 +277,7 @@ namespace dtEntityQtWidgets
       bool IsSingleMapItemSelected(QString& name) const;
       QTreeView* mTreeView;
       QModelIndex mContextMenuSelectedIndex;
+
       QAction* mDeleteEntityAction;
       QAction* mJumpToEntityAction;
       QAction* mDeleteSpawnerAction;
@@ -256,8 +290,14 @@ namespace dtEntityQtWidgets
       QAction* mUnloadMapAction;
       QAction* mSaveMapCopyAction;
       QAction* mSaveMapAction;
+
       QToolButton* mAddItemButton;
-   }; 
+
+      QMenu mAddItemMenu;
+      QMenu mAddItemMenuItemSelected;
+
+      osg::ref_ptr<ContextMenuFactory> mContextMenuFactory;
+   };
 
    ////////////////////////////////////////////////////////////////////////////////
    class ENTITYQTWIDGETS_EXPORT EntityTreeController
@@ -265,11 +305,11 @@ namespace dtEntityQtWidgets
    {
       Q_OBJECT
 
-   public:      
+   public:
 
       EntityTreeController(dtEntity::EntityManager*);
-      virtual ~EntityTreeController();      
-      
+      virtual ~EntityTreeController();
+
       void SetupSlots(EntityTreeModel* model, EntityTreeView*);
 
       void EntitySystemAdded(const dtEntity::Message& msg);
@@ -277,7 +317,7 @@ namespace dtEntityQtWidgets
    public slots:
 
       void Init();
-      
+
       void OnDeleteEntity(dtEntity::EntityId id);
       void OnDeleteSpawner(const QString& name);
       void OnSpawnSpawner(const QString& spawnername, const QString& entityname);
@@ -291,11 +331,11 @@ namespace dtEntityQtWidgets
       void OnSaveMapCopy(const QString& mapname, const QString& copyname);
       void OnMoveEntityToMap(dtEntity::EntityId, const QString& mapname);
       void OnMoveSpawnerToMap(const QString& spawnername, const QString& oldmapname, const QString& newmapname);
-      void OnMoveMapToRow(const QString& mapname, int saveorder);
+      void OnMoveMapToRow(const QString& mapname, unsigned int saveorder);
 
    signals:
 
-     void ShowErrorMessage(const QString&);     
+     void ShowErrorMessage(const QString&);
 
    private:
 

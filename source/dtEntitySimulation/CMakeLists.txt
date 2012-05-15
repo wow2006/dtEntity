@@ -1,50 +1,25 @@
-SET(LIB_NAME dtEntitySimulation)
 
-IF (WIN32)
-ADD_DEFINITIONS(-DNOMINMAX)
-ENDIF (WIN32)
-
-INCLUDE_DIRECTORIES( 
-  ${CMAKE_CURRENT_SOURCE_DIR}/../../include/
-  ${OSG_INCLUDE_DIRS}
+SET(TARGET_H ../../include/dtEntitySimulation/groundclampingcomponent.h
+			 ../../include/dtEntitySimulation/manipulatorcomponent.h
+			 ../../include/dtEntitySimulation/manipulators.h
+			 ../../include/dtEntitySimulation/particlecomponent.h
+			 ../../include/dtEntitySimulation/pathcomponent.h
+			 ../../include/dtEntitySimulation/quattools.h
+)			 
+			 
+SET(TARGET_SRC_ADD
+         manipulators.cpp
+         pluginfactory.cpp
 )
 
-SET(HEADER_PATH ${CMAKE_CURRENT_SOURCE_DIR}/../../include/${LIB_NAME})
-SET(SOURCE_PATH ${CMAKE_CURRENT_SOURCE_DIR})
-
-SET(LIB_PUBLIC_HEADERS
-   ${HEADER_PATH}/groundclampingcomponent.h
-   ${HEADER_PATH}/messages.h
-   ${HEADER_PATH}/manipulatorcomponent.h
-   ${HEADER_PATH}/manipulators.h
-   ${HEADER_PATH}/particlecomponent.h
-   ${HEADER_PATH}/pathcomponent.h
-   ${HEADER_PATH}/quattools.h
+SET(TARGET_SRC_REPLACE
+         groundclampingcomponent.cpp
+         manipulatorcomponent.cpp
+         pathcomponent.cpp
+         particlecomponent.cpp
 )
 
-SET(LIB_SOURCES
-	 ${SOURCE_PATH}/groundclampingcomponent.cpp
-	 ${SOURCE_PATH}/messages.cpp
-	 ${SOURCE_PATH}/manipulatorcomponent.cpp
-	 ${SOURCE_PATH}/manipulators.cpp
-	 ${SOURCE_PATH}/particlecomponent.cpp
-	 ${SOURCE_PATH}/pathcomponent.cpp
-	 ${SOURCE_PATH}/pluginfactory.cpp
-)
+REPLACE_SIDS_IN_SOURCE(TARGET_SRC_OUT ${TARGET_SRC_REPLACE})
+SET(TARGET_SRC ${TARGET_SRC_ADD} ${TARGET_SRC_OUT} ${TARGET_SRC_REPLACE})
 
-
-ADD_LIBRARY(${LIB_NAME} MODULE ${LIB_SOURCES} ${LIB_PUBLIC_HEADERS})
-	
-TARGET_LINK_LIBRARIES(${LIB_NAME}     
-               ${OSG_LIBRARIES}
-               ${OPENTHREADS_LIBRARIES}
-               dtEntity
-)
-
-SET_TARGET_PROPERTIES(${LIB_NAME}
-                     PROPERTIES DEFINE_SYMBOL DT_ENTITY_SIMULATION_LIBRARY)                     
-
-
-SET_TARGET_PROPERTIES(${LIB_NAME} PROPERTIES DEBUG_POSTFIX "${CMAKE_DEBUG_POSTFIX}")
-
-INCLUDE(PluginInstall OPTIONAL)
+SETUP_PLUGIN(dtEntitySimulation)

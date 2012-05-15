@@ -23,7 +23,7 @@
 #include <osg/ref_ptr>
 #include <dtEntity/export.h>
 #include <dtEntity/defaultentitysystem.h>
-#include <dtEntity/osgcomponents.h>
+#include <dtEntity/groupcomponent.h>
 #include <dtEntity/stringid.h>
 #include <osg/Geode>
 #include <osgShadow/ShadowMap>
@@ -95,6 +95,7 @@ namespace dtEntity
       : public DefaultEntitySystem<ShadowComponent>
    {
    public:
+      static const ComponentType TYPE;
       static const StringId EnabledId;
 
       ShadowSystem(EntityManager& em);

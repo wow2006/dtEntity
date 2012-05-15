@@ -25,6 +25,7 @@
 #include <QtCore/QString>
 #include <QtCore/QSize>
 #include <QtCore/QObject>
+#include <QtCore/QFileSystemWatcher>
 #include <osg/Timer>
 #include <set>
 
@@ -78,6 +79,8 @@ namespace dtEntityEditor
        */
       QStringList GetDataPaths() const;
 
+      void OnResourceLoaded(const dtEntity::Message& msg);
+
    public slots:
 
       /**
@@ -98,21 +101,22 @@ namespace dtEntityEditor
       void ShutDownGame(bool);
      
       /**
+        * Reset scene
+        */
+      void NewScene();
+
+      /**
        * Load scene from path
        */
       void LoadScene(const QString& path);
 
-      /**
-       * Add and save empty new scene
-       */
-      void AddScene(const QString& datapath, const QString& mappath);
-
-      void SaveScene();
-      void SaveAll();
+      void SaveScene(const QString& path);
 
       void ViewResized(const QSize& size);
 
       void InitializeScripting();
+
+      void OnFileChanged(const QString& path);
 
    private slots:
 
@@ -132,11 +136,11 @@ namespace dtEntityEditor
 
       void CreateCameraEntityIfNotExists();
       EditorMainWindow* mMainWindow;
-      QTimer* mTimer;
       dtEntity::EntityManager* mEntityManager;
       osg::ref_ptr<osgViewer::Viewer> mViewer;
       std::vector<std::string> mPluginPaths;
       osg::Timer_t mStartOfFrameTick;
+      QFileSystemWatcher* mFileSystemWatcher;
       double mTimeScale;
     };
 }

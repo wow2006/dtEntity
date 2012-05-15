@@ -37,8 +37,8 @@ namespace dtEntity
    ////////////////////////////////////////////////////////////////////////////
    ////////////////////////////////////////////////////////////////////////////////
 
-   const StringId LayerAttachPointComponent::TYPE(SID("LayerAttachPoint"));
-   const StringId LayerAttachPointComponent::NameId(SID("Name"));
+   const StringId LayerAttachPointComponent::TYPE(dtEntity::SID("LayerAttachPoint"));
+   const StringId LayerAttachPointComponent::NameId(dtEntity::SID("Name"));
    
    ////////////////////////////////////////////////////////////////////////////
    LayerAttachPointComponent::LayerAttachPointComponent()    
@@ -135,7 +135,7 @@ namespace dtEntity
    void LayerAttachPointComponent::SetNode(osg::Node* node)
    {
       assert(mEntityManager);
-      node->setName("Layer Attach Point: "+ GetStringFromSID(GetName()));
+      node->setName("Layer Attach Point");
       GroupComponent::SetNode(node);      
 
       LayerSystem* ls;
@@ -156,8 +156,9 @@ namespace dtEntity
 
    ////////////////////////////////////////////////////////////////////////////
    ////////////////////////////////////////////////////////////////////////////////
-   const StringId LayerAttachPointSystem::DefaultLayerId(SID("default"));
-   const StringId LayerAttachPointSystem::RootId(SID("root"));
+   const StringId LayerAttachPointSystem::TYPE(dtEntity::SID("LayerAttachPoint"));
+   const StringId LayerAttachPointSystem::DefaultLayerId(dtEntity::SID("default"));
+   const StringId LayerAttachPointSystem::RootId(dtEntity::SID("root"));
 
 
    ////////////////////////////////////////////////////////////////////////////////
@@ -254,8 +255,8 @@ namespace dtEntity
       LayerByNameMap::iterator i = mLayerByNameMap.find(dtEntity::SID(name));
       if(i == mLayerByNameMap.end())
       {
-         return new UIntProperty(0);
+         return new StringIdProperty(0);
       }
-      return new UIntProperty(i->first);
+      return new StringIdProperty(i->first);
    }
 }

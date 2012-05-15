@@ -22,11 +22,8 @@
 #include <assert.h>
 #include <sstream>
 #include <osg/io_utils>
-#include <dtEntity/log.h>              
-
-#ifdef _DEBUG
-#include <limits.h>
-#endif
+#include <dtEntity/log.h>
+#include <climits>
 
 namespace dtEntity
 {
@@ -202,10 +199,40 @@ namespace dtEntity
       if(mValue.size() < 4)
       {
          LOG_ERROR("Not enough entries in array for QuatValue!");
-         return osg::Quat();
+         return osg::Quat(0,0,0,1);
       }
       return osg::Quat(mValue[0]->DoubleValue(), mValue[1]->DoubleValue(),
          mValue[2]->DoubleValue(), mValue[3]->DoubleValue());
+   }
+
+   ////////////////////////////////////////////////////////////////////////////////
+   osg::Matrix ArrayProperty::MatrixValue() const
+   {
+      if(mValue.size() < 16)
+      {
+         LOG_ERROR("Not enough entries in array for MatrixValue!");
+         osg::Matrix m;
+         m.makeIdentity();
+         return m;
+      }
+      return osg::Matrix(
+               mValue[ 0]->DoubleValue(),
+               mValue[ 1]->DoubleValue(),
+               mValue[ 2]->DoubleValue(),
+               mValue[ 3]->DoubleValue(),
+               mValue[ 4]->DoubleValue(),
+               mValue[ 5]->DoubleValue(),
+               mValue[ 6]->DoubleValue(),
+               mValue[ 7]->DoubleValue(),
+               mValue[ 8]->DoubleValue(),
+               mValue[ 9]->DoubleValue(),
+               mValue[10]->DoubleValue(),
+               mValue[11]->DoubleValue(),
+               mValue[12]->DoubleValue(),
+               mValue[13]->DoubleValue(),
+               mValue[14]->DoubleValue(),
+               mValue[15]->DoubleValue()
+               );
    }
 
    ////////////////////////////////////////////////////////////////////////////////
@@ -326,11 +353,23 @@ namespace dtEntity
    }
 
    /////////////////////////////////////////////////////////////////////////////////
-   void ArrayProperty::Insert(Property* prop, unsigned int index)
+   void ArrayProperty::Insert(unsigned int index, Property* prop)
    {
       PropertyArray::iterator i = mValue.begin();
       i += index;
       mValue.insert(i, prop);
+   }
+
+   /////////////////////////////////////////////////////////////////////////////////
+   Property* ArrayProperty::Get(unsigned int index)
+   {
+      return mValue[index];
+   }
+
+   /////////////////////////////////////////////////////////////////////////////////
+   const Property* ArrayProperty::Get(unsigned int index) const
+   {
+      return mValue[index];
    }
 
    /////////////////////////////////////////////////////////////////////////////////
@@ -891,7 +930,7 @@ namespace dtEntity
          return true;
       
       case DataType::STRINGID:
-      
+         LOG_ERROR("Setting String Property from StringID property. Costly!");
          this->Set(GetStringFromSID(other.StringIdValue()));
          return true;
       default: return false;
@@ -1202,6 +1241,18 @@ namespace dtEntity
    }
 
    /////////////////////////////////////////////////////////////////////////////////
+   osg::Vec2f Vec3Property::Vec2Value() const
+   {
+      return osg::Vec2f(mValue[0], mValue[1]);
+   }
+
+   /////////////////////////////////////////////////////////////////////////////////
+   osg::Vec2d Vec3Property::Vec2dValue() const
+      {
+      return osg::Vec2d(mValue[0], mValue[1]);
+   }
+   
+   /////////////////////////////////////////////////////////////////////////////////
    const std::string Vec3Property::StringValue() const 
    { 
       std::ostringstream os;
@@ -1271,6 +1322,30 @@ namespace dtEntity
    osg::Vec4d Vec4Property::Vec4dValue() const
    {
       return osg::Vec4d(mValue[0], mValue[1], mValue[2], mValue[3]);
+   }
+
+   /////////////////////////////////////////////////////////////////////////////////
+   osg::Vec2f Vec4Property::Vec2Value() const
+   {
+      return osg::Vec2f(mValue[0], mValue[1]);
+   }
+
+   /////////////////////////////////////////////////////////////////////////////////
+   osg::Vec2d Vec4Property::Vec2dValue() const
+   {
+      return osg::Vec2d(mValue[0], mValue[1]);
+   }
+
+   /////////////////////////////////////////////////////////////////////////////////
+   osg::Vec3f Vec4Property::Vec3Value() const
+   {
+      return osg::Vec3f(mValue[0], mValue[1], mValue[2]);
+   }
+
+   /////////////////////////////////////////////////////////////////////////////////
+   osg::Vec3d Vec4Property::Vec3dValue() const
+   {
+      return osg::Vec3d(mValue[0], mValue[1], mValue[2]);
    }
 
    /////////////////////////////////////////////////////////////////////////////////
@@ -1417,6 +1492,18 @@ namespace dtEntity
    }
 
    /////////////////////////////////////////////////////////////////////////////////
+   osg::Vec2f Vec3dProperty::Vec2Value() const
+   {
+      return osg::Vec2f(mValue[0], mValue[1]);
+   }
+
+   /////////////////////////////////////////////////////////////////////////////////
+   osg::Vec2d Vec3dProperty::Vec2dValue() const
+   {
+      return osg::Vec2d(mValue[0], mValue[1]);
+   }
+
+   /////////////////////////////////////////////////////////////////////////////////
    const std::string Vec3dProperty::StringValue() const
    {
       std::ostringstream os;
@@ -1486,6 +1573,30 @@ namespace dtEntity
    osg::Vec4d Vec4dProperty::Vec4dValue() const
    {
       return Get();
+   }
+
+   /////////////////////////////////////////////////////////////////////////////////
+   osg::Vec2f Vec4dProperty::Vec2Value() const
+   {
+      return osg::Vec2f(mValue[0], mValue[1]);
+   }
+
+   /////////////////////////////////////////////////////////////////////////////////
+   osg::Vec2d Vec4dProperty::Vec2dValue() const
+   {
+      return osg::Vec2d(mValue[0], mValue[1]);
+   }
+
+   /////////////////////////////////////////////////////////////////////////////////
+   osg::Vec3f Vec4dProperty::Vec3Value() const
+   {
+      return osg::Vec3f(mValue[0], mValue[1], mValue[2]);
+   }
+
+   /////////////////////////////////////////////////////////////////////////////////
+   osg::Vec3d Vec4dProperty::Vec3dValue() const
+   {
+      return osg::Vec3d(mValue[0], mValue[1], mValue[2]);
    }
 
    /////////////////////////////////////////////////////////////////////////////////

@@ -64,7 +64,7 @@ namespace dtEntity
 	   {
 			osg::ref_ptr<osg::StateSet> ss = mGroupDepthTest->getOrCreateStateSet();
 		   ss->setMode(GL_LIGHTING, osg::StateAttribute::OFF);    
-		   ss->setRenderBinDetails(80, "RenderBin"); 
+         ss->setRenderBinDetails(240000, "RenderBin");
 			osg::ref_ptr<osg::LineWidth> lw = new osg::LineWidth();
 		   lw->setWidth(1); 
 		   ss->setAttributeAndModes(lw, osg::StateAttribute::ON); 
@@ -82,7 +82,7 @@ namespace dtEntity
 	   {
 			osg::ref_ptr<osg::StateSet> ss = mGroupNoDepthTest->getOrCreateStateSet();
 		   ss->setMode(GL_LIGHTING, osg::StateAttribute::OFF);    
-		   ss->setRenderBinDetails(80, "RenderBin"); 
+         ss->setRenderBinDetails(240001, "RenderBin");
 			osg::ref_ptr<osg::LineWidth> lw = new osg::LineWidth();
 		   lw->setWidth(1); 
 		   ss->setAttributeAndModes(lw, osg::StateAttribute::ON); 
@@ -141,11 +141,15 @@ namespace dtEntity
 
       if(enabled)
       {
-         mEntityManager->RegisterForMessages(dtEntity::PostFrameMessage::TYPE, mTickFunctor);
+         mEntityManager->RegisterForMessages(dtEntity::PostFrameMessage::TYPE, mTickFunctor, "DebugDrawManager::Update");
+         mGroupDepthTest->setNodeMask(0xFFFFFFFF);
+         mGroupNoDepthTest->setNodeMask(0xFFFFFFFF);
       }
       else
       {      
          Clear();
+         mGroupDepthTest->setNodeMask(0);
+         mGroupNoDepthTest->setNodeMask(0);
          mEntityManager->UnregisterForMessages(dtEntity::PostFrameMessage::TYPE, mTickFunctor);
       }
       mEnabled = enabled;

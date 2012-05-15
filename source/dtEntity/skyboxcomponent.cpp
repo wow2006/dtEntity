@@ -179,13 +179,13 @@ namespace dtEntity
 
 
    ////////////////////////////////////////////////////////////////////////////////
-   const StringId SkyBoxComponent::TYPE(SID("SkyBox"));      
-   const StringId SkyBoxComponent::TextureUpId(SID("TextureUp"));   
-   const StringId SkyBoxComponent::TextureDownId(SID("TextureDown"));   
-   const StringId SkyBoxComponent::TextureNorthId(SID("TextureNorth"));   
-   const StringId SkyBoxComponent::TextureSouthId(SID("TextureSouth"));   
-   const StringId SkyBoxComponent::TextureEastId(SID("TextureEast"));   
-   const StringId SkyBoxComponent::TextureWestId(SID("TextureWest"));   
+   const StringId SkyBoxComponent::TYPE(dtEntity::SID("SkyBox"));      
+   const StringId SkyBoxComponent::TextureUpId(dtEntity::SID("TextureUp"));   
+   const StringId SkyBoxComponent::TextureDownId(dtEntity::SID("TextureDown"));   
+   const StringId SkyBoxComponent::TextureNorthId(dtEntity::SID("TextureNorth"));   
+   const StringId SkyBoxComponent::TextureSouthId(dtEntity::SID("TextureSouth"));   
+   const StringId SkyBoxComponent::TextureEastId(dtEntity::SID("TextureEast"));   
+   const StringId SkyBoxComponent::TextureWestId(dtEntity::SID("TextureWest"));   
 
    ////////////////////////////////////////////////////////////////////////////
    SkyBoxComponent::SkyBoxComponent()
@@ -221,7 +221,7 @@ namespace dtEntity
       stateset->setMode(GL_FOG,osg::StateAttribute::OFF);
       stateset->setMode( GL_CULL_FACE, osg::StateAttribute::OFF );
 
-      osg::Shader* vShader = new osg::Shader(osg::Shader::VERTEX);
+      /*osg::Shader* vShader = new osg::Shader(osg::Shader::VERTEX);
       osg::Shader* fShader = new osg::Shader(osg::Shader::FRAGMENT);
 
       const char vpstr[] =
@@ -246,7 +246,7 @@ namespace dtEntity
       program->setName("SkyboxShader");
       program->addShader(vShader);
       program->addShader(fShader);
-
+*/
 
       // clear the depth to the far plane.
       osg::Depth* depth = new osg::Depth;
@@ -306,6 +306,10 @@ namespace dtEntity
          BaseClass::OnPropertyChanged(propname, prop);
       }
    }
+
+   ////////////////////////////////////////////////////////////////////////////
+   ////////////////////////////////////////////////////////////////////////////
+   const StringId SkyBoxSystem::TYPE(dtEntity::SID("SkyBox"));
 
    ////////////////////////////////////////////////////////////////////////////
    SkyBoxSystem::SkyBoxSystem(EntityManager& em)

@@ -49,9 +49,41 @@ namespace dtEntityWrappers
       }
 
       HandleScope scope;
+
       Handle<External> ext = Handle<External>::Cast(info.Data());
       dtEntity::Property* prop = static_cast<dtEntity::Property*>(ext->Value());
-      return scope.Close(PropToVal(info.Holder()->CreationContext(), prop));
+
+      switch(prop->GetType())
+      {
+      case dtEntity::DataType::ARRAY:
+      case dtEntity::DataType::VEC2:
+      case dtEntity::DataType::VEC2D:
+      case dtEntity::DataType::VEC3:
+      case dtEntity::DataType::VEC3D:
+      case dtEntity::DataType::VEC4:
+      case dtEntity::DataType::VEC4D:
+      case dtEntity::DataType::GROUP:
+      case dtEntity::DataType::MATRIX:
+      case dtEntity::DataType::QUAT:
+      {
+         Handle<Value> v = info.Holder()->GetHiddenValue(propname);
+         if(v.IsEmpty())
+         {
+            v = ConvertPropertyToValue(info.Holder()->CreationContext(), prop);
+            info.Holder()->SetHiddenValue(propname, v);
+         }
+         else
+         {
+            Handle<Value> ret = SetValueFromProperty(prop, v);
+            if(ret->BooleanValue() == false) {
+               return ThrowError("Internal error: Did property change type on the fly?");
+            }
+         }
+         return scope.Close(v);
+      }
+      default:
+         return scope.Close(ConvertPropertyToValue(info.Holder()->CreationContext(), prop));
+      }
    }
 
    ////////////////////////////////////////////////////////////////////////////////
@@ -72,7 +104,7 @@ namespace dtEntityWrappers
       Handle<External> ext = Handle<External>::Cast(info.Data());
       dtEntity::Property* prop = static_cast<dtEntity::Property*>(ext->Value());
       assert(prop);
-      ValToProp(value, prop);      
+      SetPropertyFromValue(value, prop);
       component->OnPropertyChanged(dtEntity::SIDHash(ToStdString(propname)), *prop);
    }
 
@@ -112,7 +144,7 @@ namespace dtEntityWrappers
       {
          std::string propname = dtEntity::GetStringFromSID(i->first);
          const dtEntity::Property* prop = i->second;
-         obj->Set(ToJSString(propname), PropToVal(args.Holder()->CreationContext(), prop));
+         obj->Set(ToJSString(propname), ConvertPropertyToValue(args.Holder()->CreationContext(), prop));
       }
 
       return scope.Close(obj);
@@ -130,7 +162,7 @@ namespace dtEntityWrappers
       component->Finished();
       return Undefined();
    }
-   
+
    ////////////////////////////////////////////////////////////////////////////////
    Handle<Value> ConstructCO(const v8::Arguments& args)
    {  
@@ -153,7 +185,7 @@ namespace dtEntityWrappers
    }
 
    ////////////////////////////////////////////////////////////////////////////////
-   Handle<Object> WrapComponent(ScriptSystem* scriptsys, dtEntity::EntityId eid, dtEntity::Component* v)
+   Handle<Object> WrapComponent(Handle<Object> wrappedes, ScriptSystem* scriptsys, dtEntity::EntityId eid, dtEntity::Component* v)
    {
 
       HandleScope handle_scope;
@@ -184,19 +216,41 @@ namespace dtEntityWrappers
 
       Local<Object> instance = s_componentTemplate->GetFunction()->NewInstance();
       instance->SetInternalField(0, External::New(v));
-      instance->SetHiddenValue(String::New("__entityid__"), Uint32::New(eid));
+      instance->SetHiddenValue(scriptsys->GetEntityIdString(), Uint32::New(eid));
 
-      const dtEntity::PropertyContainer::PropertyMap& props = v->GetAllProperties();
-
-      dtEntity::PropertyContainer::PropertyMap::const_iterator i;
-      for(i = props.begin(); i != props.end(); ++i)
+      // GetStringFromSID and conversion to v8::String is costly, create a 
+      // hidden value in entity system wrapper that stores
+      // strings and their string ids as name=>value pairs
+      Handle<Value> propnamesval = wrappedes->GetHiddenValue(scriptsys->GetPropertyNamesString());
+      if(propnamesval.IsEmpty())
       {
-         dtEntity::Property* prop = i->second;
+         Handle<Object> names = Object::New();
+         dtEntity::PropertyContainer::PropertyMap::const_iterator i;
+         const dtEntity::PropertyContainer::PropertyMap& props = v->GetAllProperties();
+         for(i = props.begin(); i != props.end(); ++i)
+         {
+            dtEntity::StringId sid = i->first;
+            std::string propname = dtEntity::GetStringFromSID(sid);
+            names->Set(String::New(propname.c_str()), WrapSID(sid));
+         }
+         wrappedes->SetHiddenValue(scriptsys->GetPropertyNamesString(), names);
+         propnamesval = names;
+      }
+
+      Handle<Object> propnames = Handle<Object>::Cast(propnamesval);
+      Handle<Array> keys = propnames->GetPropertyNames();
+      for(unsigned int i = 0; i < keys->Length(); ++i)
+      {
+         Handle<String> str = keys->Get(i)->ToString();
+         dtEntity::StringId sid = UnwrapSID(propnames->Get(str));
+         dtEntity::Property* prop = v->Get(sid);
+         if(prop == NULL)
+         {
+            LOG_ERROR("Could not find property in component: " << ToStdString(str));
+            continue;
+         }
          Handle<External> ext = v8::External::New(static_cast<void*>(prop));
-         std::string propname = dtEntity::GetStringFromSID(i->first);
-         instance->SetAccessor(ToJSString(propname),
-                         COPropertyGetter, COPropertySetter,
-                         ext);
+         instance->SetAccessor(str, COPropertyGetter, COPropertySetter, ext);
       }
       
       // store wrapped component to script system

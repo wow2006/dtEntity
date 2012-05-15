@@ -89,7 +89,7 @@ namespace dtEntityWrappers
       {
          dtEntity::StringId n = i->first;
          const dtEntity::Property* p = i->second;
-         Handle<Value> v = PropToVal(context, p);
+         Handle<Value> v = ConvertPropertyToValue(context, p);
          Handle<String> str = GetString(n);
          o->Set(str, v);
       }
@@ -148,6 +148,13 @@ namespace dtEntityWrappers
    {
       return String::New("<EntityManager>");
    }
+
+   ////////////////////////////////////////////////////////////////////////////////
+   Handle<Value> EMCloneEntity(const v8::Arguments& args)
+   {
+      dtEntity::EntityManager* em = UnwrapEntityManager(args.Holder());
+      return Boolean::New(em->CloneEntity(args[0]->Uint32Value(), args[1]->Uint32Value()));
+   }
    
    ////////////////////////////////////////////////////////////////////////////////
    Handle<Value> EMCreateEntity(const v8::Arguments& args)
@@ -158,27 +165,6 @@ namespace dtEntityWrappers
       bool success = em->CreateEntity(entity);
       if(!success) return Null();
       return Integer::New(entity->GetId());
-   }
-
-   ////////////////////////////////////////////////////////////////////////////////
-   Handle<Value> EMGetComponents(const v8::Arguments& args)
-   {
-      ScriptSystem* ss = static_cast<ScriptSystem*>(External::Unwrap(args.Data()));
-
-      dtEntity::EntityManager* em = UnwrapEntityManager(args.Holder());
-      dtEntity::EntityId id = args[0]->Uint32Value();
-      std::vector<dtEntity::Component*> comps;
-      em->GetComponents(id, comps);
-
-      HandleScope scope;
-      Handle<Object> obj = Object::New();
-      std::vector<dtEntity::Component*>::iterator i;
-      for(i = comps.begin(); i != comps.end(); ++i)
-      {
-        std::string str = dtEntity::GetStringFromSID((*i)->GetType());
-        obj->Set(ToJSString(str), WrapComponent(ss, id, *i));
-      }
-      return scope.Close(obj);
    }
 
    ////////////////////////////////////////////////////////////////////////////////
@@ -200,6 +186,13 @@ namespace dtEntityWrappers
    }
 
    ////////////////////////////////////////////////////////////////////////////////
+   Handle<Value> EMHasEntity(const v8::Arguments& args)
+   {
+      dtEntity::EntityManager* em = UnwrapEntityManager(args.Holder());
+      return Boolean::New(em->HasEntity(args[0]->Uint32Value()));
+   }
+
+   ////////////////////////////////////////////////////////////////////////////////
    void ConvertJSToMessage(Handle<Value> val, dtEntity::Message* msg)
    {
       HandleScope scope;
@@ -218,7 +211,7 @@ namespace dtEntityWrappers
          }
          else
          {
-            ValToProp(o->Get(propn), prop);
+            SetPropertyFromValue(o->Get(propn), prop);
          }
       }
    }
@@ -270,6 +263,25 @@ namespace dtEntityWrappers
       dtEntity::EntityManager* em = UnwrapEntityManager(args.Holder());
       bool success = em->KillEntity(args[0]->Int32Value());
       return success ? True() : False();
+   }
+
+   ////////////////////////////////////////////////////////////////////////////////
+   Handle<Value> EMAddPlugin(const v8::Arguments& args)
+   {  
+      std::string path = ToStdString(args[0]);
+      std::string name = ToStdString(args[1]);
+
+      dtEntity::ComponentPluginManager& pm = dtEntity::ComponentPluginManager::GetInstance();
+      std::set<dtEntity::ComponentType> handled = pm.AddPlugin(path, name, false);
+      HandleScope scope;
+      Handle<Array> arr = Array::New();
+
+      int idx = 0;
+      for(std::set<dtEntity::ComponentType>::iterator i = handled.begin(); i != handled.end(); ++i)
+      {
+         arr->Set(Integer::New(idx++), String::New(dtEntity::GetStringFromSID(*i).c_str()));
+      }
+      return arr;
    }
 
    ////////////////////////////////////////////////////////////////////////////////
@@ -497,14 +509,16 @@ namespace dtEntityWrappers
 
         proto->Set("addEntitySystem", FunctionTemplate::New(EMAddEntitySystem));
         proto->Set("addToScene", FunctionTemplate::New(EMAddToScene));
+        proto->Set("cloneEntity", FunctionTemplate::New(EMCloneEntity));
         proto->Set("createEntity", FunctionTemplate::New(EMCreateEntity));
-        proto->Set("getComponents", FunctionTemplate::New(EMGetComponents, External::New(ss)));
         proto->Set("getEntityIds", FunctionTemplate::New(EMGetEntityIds));
+        proto->Set("hasEntity", FunctionTemplate::New(EMHasEntity));
         proto->Set("emitMessage", FunctionTemplate::New(EMEmitMessage));
         proto->Set("enqueueMessage", FunctionTemplate::New(EMEnqueueMessage));
         proto->Set("getEntitySystem", FunctionTemplate::New(EMGetEntitySystem));
         proto->Set("hasEntitySystem", FunctionTemplate::New(EMHasEntitySystem));
         proto->Set("killEntity", FunctionTemplate::New(EMKillEntity));
+        proto->Set("addPlugin", FunctionTemplate::New(EMAddPlugin));
         proto->Set("registerForMessages", FunctionTemplate::New(EMRegisterForMessages));
         proto->Set("unregisterForMessages", FunctionTemplate::New(EMUnregisterForMessages));
         proto->Set("removeFromScene", FunctionTemplate::New(EMRemoveFromScene));

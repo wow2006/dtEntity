@@ -30,7 +30,6 @@
 #include <dtEntity/entitymanager.h>
 #include <dtEntity/layercomponent.h>
 #include <dtEntity/mapcomponent.h>
-#include <dtEntity/osgcomponents.h>
 #include <dtEntity/spawner.h>
 #include <iostream>
 #include <sstream>
@@ -1114,7 +1113,7 @@ namespace dtEntityQtWidgets
             if(sel != grp.end())
             {
                dtEntity::StringId selindex = sel->second->StringIdValue();
-               std::string selstr = dtEntity::GetStringFromSID((selindex));
+
                for(int i = 0; i < parent.model()->rowCount(parent); ++i)
                {
                   QModelIndex idx = parent.model()->index(i, 0, parent);

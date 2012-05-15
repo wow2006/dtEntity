@@ -1,106 +1,95 @@
 CMAKE_MINIMUM_REQUIRED(VERSION 2.6.0 FATAL_ERROR)
-
+ 
 PROJECT(dtEntity)
 
-SET(CMAKE_DEBUG_POSTFIX  "d")
+  SET(CMAKE_DEBUG_POSTFIX  "d")
+
+IF(UNIX AND NOT WIN32)
+  SET(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -D_DEBUG")
+  SET(CMAKE_C_FLAGS_DEBUG "${CMAKE_C_FLAGS_DEBUG} -D_DEBUG")
+ENDIF()
 
 IF(CMAKE_SIZEOF_VOID_P MATCHES "8")
     SET(SYSTEM_ARCHITECTURE "64bits")
-    IF(UNIX AND NOT WIN32 AND NOT APPLE)
+    IF(UNIX AND NOT WIN32 AND NOT APPLE AND NOT DEFINED LIB_POSTFIX)
         SET(LIB_POSTFIX "64")
-    ENDIF(UNIX AND NOT WIN32 AND NOT APPLE)
+    ENDIF(UNIX AND NOT WIN32 AND NOT APPLE AND NOT DEFINED LIB_POSTFIX)
 ELSE(CMAKE_SIZEOF_VOID_P MATCHES "8")
-    SET(SYSTEM_ARCHITECTURE "32bits")
-    SET(LIB_POSTFIX "")
+    IF(NOT DEFINED SYSTEM_ARCHITECTURE)
+      SET(SYSTEM_ARCHITECTURE "32bits")
+    ENDIF(NOT DEFINED SYSTEM_ARCHITECTURE)
+
+    IF(NOT DEFINED LIB_POSTFIX)
+       SET(LIB_POSTFIX "")
+    ENDIF(NOT DEFINED LIB_POSTFIX)
 ENDIF(CMAKE_SIZEOF_VOID_P MATCHES "8")
 MARK_AS_ADVANCED(LIB_POSTFIX)
 
-#to allow usage of hash_map:
-IF(UNIX)
-    ADD_DEFINITIONS(-Wno-deprecated)
-ENDIF(UNIX)
 
 SET(CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/CMakeModules;${CMAKE_SOURCE_DIR}/source/osgLibRocket/cmake;${CMAKE_MODULE_PATH}")
+
 SET(EXECUTABLE_OUTPUT_PATH ${CMAKE_BINARY_DIR}/bin)
 SET(LIBRARY_OUTPUT_PATH ${CMAKE_BINARY_DIR}/lib)
 
+INCLUDE(DTEntityMacroUtils)
+
+#on windows, try to use provided dtEntity external dependency folder
+IF(WIN32)
+  FIND_PACKAGE(DTENTITY_EXT_DEP REQUIRED)
+ENDIF(WIN32)
+
+FIND_PACKAGE(OpenSceneGraph REQUIRED osgAnimation osgDB osgGA osgParticle osgShadow osgSim osgText osgUtil osgViewer osgManipulator)
+FIND_PACKAGE(OpenThreads)
+
 # Dynamic vs Static Linking
-OPTION(DYNAMIC_DTENTITY "Set to ON to build dtEntity for dynamic linking.  Use OFF for static." ON)
-IF(DYNAMIC_DTENTITY)
-    SET(DTENTITY_USER_DEFINED_DYNAMIC_OR_STATIC "SHARED")
-ELSE ()
-    SET(DTENTITY_USER_DEFINED_DYNAMIC_OR_STATIC "STATIC")
-    ADD_DEFINITIONS(-DDTENTITY_STATIC_BUILD)
+OPTION(DTENTITY_LIBRARY_STATIC "Set to OFF to build dtEntity for dynamic linking.  Use ON for static." OFF)
+IF(DTENTITY_LIBRARY_STATIC)
+    SET(DTENTITY_PLUGINS_DYNAMIC_OR_STATIC "STATIC")
+    SET(DTENTITY_LIBS_DYNAMIC_OR_STATIC "STATIC")
     SET(BUILD_OSGLIBROCKET_STATIC "TRUE")
+ELSE ()
+    SET(DTENTITY_PLUGINS_DYNAMIC_OR_STATIC "MODULE")
+    SET(DTENTITY_LIBS_DYNAMIC_OR_STATIC "SHARED")
 ENDIF()
 
-OPTION(BUILD_WITH_DELTA3D "Build with Delta3D" OFF)
-OPTION(BUILD_TESTS "Build unit tests" OFF)
-OPTION(BUILD_JAVASCRIPT_WRAPPERS "Build wrappers for dtScript" OFF)
-OPTION(BUILD_PHYSX "Build physx component" OFF)
-OPTION(BUILD_QT "Build Qt widgets" OFF)
-OPTION(BUILD_LIBROCKET "Build LibRocket bindings" OFF)
-OPTION(BUILD_EXAMPLES "Build examples" OFF)
+# all plugins link against these libraries
+SET(TARGET_COMMON_LIBRARIES
+    ${OPENTHREADS_LIBRARIES}
+    ${OPENSCENEGRAPH_LIBRARIES}
+    dtEntity
+)
 
-IF (BUILD_WITH_DELTA3D)
-  FIND_PACKAGE(Delta3D REQUIRED)
-ENDIF (BUILD_WITH_DELTA3D)
+#PROJECT_BINARY_DIR for generated config header file
+INCLUDE_DIRECTORIES(include ${OSG_INCLUDE_DIR} $ENV{OSG_DIR}/include ${PROJECT_BINARY_DIR}/include)
 
-OPTION(BUILD_CEGUI_WRAPPER "Build CEGUI module" OFF)
-
-SET(USE_OSG_ANIMATION   1)
-SET(USE_OSG_DB          1)
-SET(USE_OSG_GA          1)
-SET(USE_OSG_PARTICLE    1)
-SET(USE_OSG_SHADOW      1)
-SET(USE_OSG_SIM         1)
-SET(USE_OSG_TEXT        1)
-SET(USE_OSG_TERRAIN     0)
-SET(USE_OSG_UTIL        1)
-SET(USE_OSG_VIEWER      1)
-SET(USE_OSG_MANIPULATOR 1)
-FIND_PACKAGE(OpenSceneGraph REQUIRED)
-
-
-IF (BUILD_WITH_DELTA3D)
-    LINK_DIRECTORIES( ${DELTA3D_LIB_DIR} )
-    IF (DELTA3D_EXT_DIR)
-      LINK_DIRECTORIES( ${DELTA3D_EXT_DIR}/lib )
-    ENDIF (DELTA3D_EXT_DIR)
-ENDIF (BUILD_WITH_DELTA3D)
-
-if(NOT DTENTITY_CONFIG_HAS_BEEN_RUN_BEFORE)
-    set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -D_DEBUG")
-
-    if(APPLE)
-        if ("${CMAKE_OSX_SYSROOT}" MATCHES ".*/Developer/SDKs/MacOSX10.7.sdk")
-            MESSAGE(STATUS "MacOSX10.7.sdk")
-            SET(CMAKE_OSX_ARCHITECTURES "x86_64" CACHE STRING "Build architectures for OSX" FORCE)
-            SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -mmacosx-version-min=10.7 -fvisibility-inlines-hidden" CACHE STRING "Flags used by the compiler during all build types." FORCE)
-        endif()
-     endif()
-endif()
-
-IF(BUILD_QT)
-   OPTION(BUILD_ENET_INTEGRATION "Build eNet integration" OFF)
-ENDIF(BUILD_QT)
-
+#to allow usage of hash_map without warnings:
 IF(CMAKE_COMPILER_IS_GNUCXX)
   ADD_DEFINITIONS(${CMAKE_CXX_FLAGS} "-Wno-deprecated")
 ENDIF(CMAKE_COMPILER_IS_GNUCXX)
 
+if(APPLE) 
+    if(NOT DTENTITY_CONFIG_HAS_BEEN_RUN_BEFORE)
+        if ("${CMAKE_OSX_SYSROOT}" MATCHES ".*/Developer/SDKs/MacOSX10.7.sdk") 
+            MESSAGE(STATUS "MacOSX10.7.sdk")
+            SET(CMAKE_OSX_ARCHITECTURES "x86_64" CACHE STRING "Build architectures for OSX" FORCE)
+            SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -mmacosx-version-min=10.7 -fvisibility-inlines-hidden" CACHE STRING "Flags used by the compiler during all build types." FORCE)
+        endif()    
+     endif()
+endif()
+
+OPTION(BUILD_TESTS "Build unit tests" OFF)
+
+OPTION(DTENTITY_REPLACE_SIDS_WITH_PREPROCESSOR "Use a preprocessor to replace calls to dtEntity::SID with result of that operation (EXPERIMENTAL)" OFF)
+IF(DTENTITY_REPLACE_SIDS_WITH_PREPROCESSOR)
+  add_executable(HashSids source/hash_sids/hash_sids.cpp source/dtEntity/crc32.cpp)
+  SET(DTENTITY_SID_DB_PATH ${CMAKE_CURRENT_BINARY_DIR}/sids.txt)
+ENDIF(DTENTITY_REPLACE_SIDS_WITH_PREPROCESSOR)
+
 ADD_SUBDIRECTORY(ext)
 ADD_SUBDIRECTORY(source)
-ADD_SUBDIRECTORY(examples)
-ADD_SUBDIRECTORY(doc)
 
-if(UNIX)
-    install(DIRECTORY ${CMAKE_SOURCE_DIR}/BaseAssets/ DESTINATION share/dtEntity/BaseAssets PATTERN ".svn" EXCLUDE)
-else()
-    install(DIRECTORY ${CMAKE_SOURCE_DIR}/BaseAssets/ DESTINATION BaseAssets PATTERN ".svn" EXCLUDE)
-endif()
-# This needs to be run very last so other parts of the scripts can take
-# advantage of this.
-IF(NOT DTENTITY_CONFIG_HAS_BEEN_RUN_BEFORE)
-    SET(DTENTITY_CONFIG_HAS_BEEN_RUN_BEFORE 1 CACHE INTERNAL "Flag to track whether this is the first time running CMake or if CMake has been configured before")
-ENDIF()
+OPTION(BUILD_EXAMPLES "Build examples" OFF)
+IF(BUILD_EXAMPLES)
+  ADD_SUBDIRECTORY(examples)
+ENDIF(BUILD_EXAMPLES)
+

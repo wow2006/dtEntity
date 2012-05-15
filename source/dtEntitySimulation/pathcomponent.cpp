@@ -37,6 +37,8 @@ namespace dtEntitySimulation
    };
 
 
+   ////////////////////////////////////////////////////////////////////////////
+   ////////////////////////////////////////////////////////////////////////////
    const dtEntity::StringId PathComponent::TYPE(dtEntity::SID("Path"));
 
    const dtEntity::StringId PathComponent::VertsId(dtEntity::SID("Verts"));
@@ -147,7 +149,9 @@ namespace dtEntitySimulation
 
    ////////////////////////////////////////////////////////////////////////////
    ////////////////////////////////////////////////////////////////////////////
+   const dtEntity::StringId PathSystem::TYPE(dtEntity::SID("Path"));
 
+   ////////////////////////////////////////////////////////////////////////////
    PathSystem::PathSystem(dtEntity::EntityManager& em)
       : BaseClass(em)
    {
@@ -186,7 +190,7 @@ namespace dtEntitySimulation
 
      dtEntity::Property* prop = pathcomp->Get(PathComponent::VertsId);
      dtEntity::ArrayProperty* aprop = static_cast<dtEntity::ArrayProperty*>(prop);
-     aprop->Insert(new dtEntity::Vec3Property(vert), targetidx);
+     aprop->Insert(targetidx, new dtEntity::Vec3Property(vert));
      return NULL;
    }
 

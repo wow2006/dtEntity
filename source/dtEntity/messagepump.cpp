@@ -47,7 +47,7 @@ namespace dtEntity
       MsgRegistryEntry e;
       e.mOptions = options;
       e.mFunctor = ftr;
-      e.mFuncName = SID(funcname);
+      e.mFuncName = funcname.empty() ? msgtype : dtEntity::SID(funcname);
      
       unsigned int priority = options & 3;
      
@@ -61,7 +61,7 @@ namespace dtEntity
 
          if(it->second.mFunctor == ftr)
          {
-           LOG_ERROR("Trying to register a functor twice for same message: " + GetStringFromSID(msgtype));
+           LOG_ERROR("Trying to register a functor twice for same message: " << GetStringFromSID(msgtype));
          }
 
          if(otherpriority <= priority)

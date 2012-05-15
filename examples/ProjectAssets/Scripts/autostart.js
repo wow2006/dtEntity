@@ -1,6 +1,9 @@
 include_once("Scripts/stdlib.js");
 include_once("Scripts/motionmodel.js");
 include_once("Scripts/editormotionmodel.js");
+
+EntityManager.addPlugin("plugins", "dtEntityRocket");
+
 var camid = createEntity({
   Camera : {
     ContextId : 0,
@@ -28,7 +31,7 @@ var editorMotionComp = getEntitySystem("EditorMotion").getComponent(camid);
 
 if(demolist_initialized) {
 
-	include("Scripts/demo_anim.js");
+  include("Scripts/demo_anim.js");
 	include("Scripts/demo_fps.js");
 	include("Scripts/demo_layersystem.js");
 	//include("Scripts/demo_particles.js");
@@ -39,5 +42,9 @@ if(demolist_initialized) {
 	include("Scripts/demo_windowmanagement.js");
 	include("Scripts/demo_objectmotionmodel.js");
 	include("Scripts/demo_particlesystem.js");
+  include("Scripts/demo_shaders.js");
+  if(getEntitySystem("Cal3d")) {
+    include("Scripts/demo_cal3d.js");
+  }
 
 }

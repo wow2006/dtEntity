@@ -23,7 +23,7 @@
 #include <dtEntity/component.h>
 #include <dtEntity/defaultentitysystem.h>
 #include <dtEntity/property.h>
-#include <dtEntity/osgcomponents.h>
+#include <dtEntity/nodecomponent.h>
 #include <osgManipulator/Dragger>
 
 namespace dtEntitySimulation
@@ -122,7 +122,7 @@ namespace dtEntitySimulation
       typedef dtEntity::DefaultEntitySystem<ManipulatorComponent> BaseClass;
       
    public:
-
+      static const dtEntity::ComponentType TYPE;
       static const dtEntity::StringId UseLocalCoordsId;
       static const dtEntity::StringId UseGroundClampingId;
 

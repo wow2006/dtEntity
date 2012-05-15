@@ -145,7 +145,15 @@ namespace osgLibRocket
 			(*texcoords)[i].set(vert->tex_coord.x, vert->tex_coord.y);
 		}
 
-		osg::DrawElementsUInt* elements = new osg::DrawElementsUInt(osg::PrimitiveSet::TRIANGLES, num_indices, (const GLuint*)indices, 0);
+#ifdef _ANDROID_
+      osg::DrawElementsUShort* elements = new osg::DrawElementsUShort(osg::PrimitiveSet::TRIANGLES, num_indices);
+      for(int i = 0; i < num_indices; ++i)
+      {
+          elements->setElement(i, indices[i]);
+      }
+#else
+      osg::DrawElementsUInt* elements = new osg::DrawElementsUInt(osg::PrimitiveSet::TRIANGLES, num_indices, (const GLuint*)indices, 0);
+#endif
 
 		geometry->setVertexArray(vertarray);
 		geometry->setColorArray(colorarray);
@@ -319,6 +327,7 @@ namespace osgLibRocket
 	/// @return True if the load attempt succeeded and the handle and dimensions are valid, false if not.
 	bool RenderInterface::LoadTexture(Rocket::Core::TextureHandle& texture_handle, Rocket::Core::Vector2i& texture_dimensions, const Rocket::Core::String& source)
 	{
+
 		std::string src = source.CString();
 		if(src.substr(0, 10) != "LibRocket/")
 		{
@@ -453,8 +462,15 @@ namespace osgLibRocket
 			(*texcoords)[i].set(vert->tex_coord.x, vert->tex_coord.y);
 		}
 
-		osg::DrawElementsUInt* elements = new osg::DrawElementsUInt(osg::PrimitiveSet::TRIANGLES, num_indices, (const GLuint*)indices);
-
+#ifdef _ANDROID_
+      osg::DrawElementsUShort* elements = new osg::DrawElementsUShort(osg::PrimitiveSet::TRIANGLES, num_indices);
+      for(int i = 0; i < num_indices; ++i)
+      {
+          elements->setElement(i, indices[i]);
+      }
+#else
+      osg::DrawElementsUInt* elements = new osg::DrawElementsUInt(osg::PrimitiveSet::TRIANGLES, num_indices, (const GLuint*)indices, 0);
+#endif
 		geometry->setVertexArray(vertarray);
 		geometry->setColorArray(colorarray);
 		geometry->setColorBinding(osg::Geometry::BIND_PER_VERTEX);

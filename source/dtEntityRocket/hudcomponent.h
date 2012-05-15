@@ -22,7 +22,7 @@
 
 #include <dtEntity/debugdrawmanager.h>
 #include <dtEntity/defaultentitysystem.h>
-#include <dtEntity/osgcomponents.h>
+#include <dtEntity/nodecomponent.h>
 #include <dtEntity/property.h>
 #include <Rocket/Core/Element.h>
 #include <v8.h>
@@ -132,6 +132,6 @@ namespace dtEntityRocket
       dtEntity::MessageFunctor mTickFunctor;
       dtEntity::MessageFunctor mVisibilityChangedFunctor;
       dtEntity::BoolProperty mEnabled;
-      osg::ref_ptr<dtEntity::DebugDrawManager> mDebugDrawManager;
+
    };
 }

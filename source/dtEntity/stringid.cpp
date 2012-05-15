@@ -21,7 +21,12 @@
 #include <dtEntity/stringid.h>
 #include <OpenThreads/ReadWriteMutex>
 #include <dtEntity/crc32.h>
+#include <dtEntity/dtentity_config.h>
 #include <map>
+#include <string>
+#include <iostream>
+#include <fstream>
+#include <sstream>
 
 namespace dtEntity
 {
@@ -35,6 +40,34 @@ namespace dtEntity
       OpenThreads::ReadWriteMutex mMutex;
 
    public:
+
+      ////////////////////////////////////////////////////////////////////////////////
+      StringIdManager()
+      {
+         std::ifstream indbstr("sids.txt");
+         if(!indbstr.fail()) 
+         {
+           while(indbstr.good() )
+           {
+              std::string line;
+              std::getline(indbstr, line);
+              
+              if(line.empty())
+              {
+                 continue;
+              }
+
+              std::string::size_type offset = line.find_first_of(' ');           
+              std::string hashstr = line.substr(0, offset);
+              std::stringstream ss(hashstr);
+              unsigned int hash; 
+              ss >> hash;
+              std::string text = line.substr(offset + 1, line.length() - 1);
+              mReverseLookup[hash] = text;
+           }
+         }
+        
+      }
 
       ////////////////////////////////////////////////////////////////////////////////
       unsigned int Hash(const std::string& str)
@@ -76,7 +109,7 @@ namespace dtEntity
    {
       unsigned int hash = StringIdManager::GetInstance().Hash(str);
       StringIdManager::GetInstance().AddToReverseLookup(str, hash);
-#if defined(DTENTITY_USE_STRINGS_AS_STRINGIDS)
+#if DTENTITY_USE_STRINGS_AS_STRINGIDS
       return str;
 #else
       return hash;
@@ -86,7 +119,7 @@ namespace dtEntity
    ////////////////////////////////////////////////////////////////////////////////
    std::string GetStringFromSID(StringId id)
    {
-#if defined(DTENTITY_USE_STRINGS_AS_STRINGIDS)
+#if DTENTITY_USE_STRINGS_AS_STRINGIDS
       return id;
 #else
       return StringIdManager::GetInstance().ReverseLookup(id);
@@ -96,7 +129,7 @@ namespace dtEntity
    ////////////////////////////////////////////////////////////////////////////////
    StringId SIDHash(const std::string& str)
    {
-#if defined(DTENTITY_USE_STRINGS_AS_STRINGIDS)
+#if DTENTITY_USE_STRINGS_AS_STRINGIDS
       return str;
 #else
       unsigned int hash = StringIdManager::GetInstance().Hash(str);
@@ -105,19 +138,9 @@ namespace dtEntity
    }
 
    ////////////////////////////////////////////////////////////////////////////////
-   StringId DT_ENTITY_EXPORT SIDHash(StringId hash)
-   {
-#if defined(DTENTITY_USE_STRINGS_AS_STRINGIDS)
-      return StringIdManager::GetInstance().ReverseLookup(hash);
-#else
-      return hash;
-#endif
-   }
-
-   ////////////////////////////////////////////////////////////////////////////////
    StringId SID(unsigned int hash)
    {
-#if defined(DTENTITY_USE_STRINGS_AS_STRINGIDS)
+#if DTENTITY_USE_STRINGS_AS_STRINGIDS
       return StringIdManager::GetInstance().ReverseLookup(hash);
 #else
       return hash;

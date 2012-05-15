@@ -7,7 +7,7 @@ ENDIF (WIN32)
 INCLUDE_DIRECTORIES( 
   ${CMAKE_SOURCE_DIR}/${INC_DIR}  
   ${CMAKE_CURRENT_SOURCE_DIR}/../../include/
-  ${OSG_INCLUDE_DIRS}
+  ${OSG_INCLUDE_DIR}
 )
 
 SET(APP_SOURCES
@@ -20,7 +20,10 @@ ADD_EXECUTABLE(${APP_NAME}
 
 TARGET_LINK_LIBRARIES(${APP_NAME}     
 					  dtEntity                   
-                      ${OSG_LIBRARIES}        
+                      ${OPENSCENEGRAPH_LIBRARIES}
+                      ${DTUTIL_LIBRARIES}
+					  ${DTCORE_LIBRARIES}            
+					  ${DTABC_LIBRARIES}
                       )
                      
 INCLUDE(ModuleInstall OPTIONAL)

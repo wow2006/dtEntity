@@ -135,6 +135,20 @@ namespace dtEntity
       bool CreateEntity(Entity*& entity);
 
       /**
+       * Loops through all components of origin and creates them on target entity
+       * @param target ID of an existing entity with no components
+       * @param origin Clone components of this entity
+       * @return true if success
+       */
+      bool CloneEntity(EntityId target, EntityId origin);
+
+      /**
+       * @param id Check if an entity with this id exists
+       * @return true if such an entity exists
+       */
+      bool HasEntity(EntityId id) const;
+
+      /**
        * returns true while at least one entity exists
        */
       bool HasEntities() const;
@@ -271,7 +285,7 @@ namespace dtEntity
 	  void SetMessagePump(MessagePump& p);
 
       // See messagepump.h for documentation
-      inline void RegisterForMessages(MessageType msgtype, MessageFunctor& ftr, unsigned int options = FilterOptions::DEFAULT, const std::string& funcname = "unnamed")
+      inline void RegisterForMessages(MessageType msgtype, MessageFunctor& ftr, unsigned int options = FilterOptions::DEFAULT, const std::string& funcname = "")
       {
          if(mMessagePump) mMessagePump->RegisterForMessages(msgtype, ftr, options, funcname);
       }

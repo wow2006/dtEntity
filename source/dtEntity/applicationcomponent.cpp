@@ -57,7 +57,6 @@ namespace dtEntity
       ApplicationSystem* mApplicationSystem;
       osg::Timer_t mStartOfFrameTick;
       osg::Timer_t mSimulationClockTime;
-      
       unsigned int mLastFrameNumber;
 
    public:
@@ -71,11 +70,11 @@ namespace dtEntity
          : mApplicationSystem(as)
          , mStartOfFrameTick(osg::Timer::instance()->tick())
          , mSimulationClockTime(0)
+         , mLastFrameNumber(0)
          , mSimTime(0)
-         , mTimeScale(0)
          , mDeltaSimTime(0)
          , mDeltaTime(0)
-         , mLastFrameNumber(0)
+         , mTimeScale(1)
       {
          time_t t;
          time(&t);
@@ -98,18 +97,14 @@ namespace dtEntity
          }
          mLastFrameNumber = fs->getFrameNumber();
 
-         double simtime = fs->getSimulationTime();
-         osg::Timer_t currentTick = osg::Timer::instance()->tick();
+         mSimTime = fs->getSimulationTime();
+         osg::Timer_t lastTick = mStartOfFrameTick;
+         mStartOfFrameTick = osg::Timer::instance()->tick();
 
-         mDeltaTime = (float)osg::Timer::instance()->delta_s(mStartOfFrameTick, currentTick);
-         
-         mTimeScale = mApplicationSystem->GetTimeScale();
-         double add = (mTimeScale * mDeltaTime) / osg::Timer::instance()->getSecondsPerTick();
-         mSimulationClockTime += add;
-        
-         mDeltaSimTime = simtime - mSimTime;
-         mSimTime = simtime;
-         mStartOfFrameTick = currentTick;
+         mDeltaTime = (float)osg::Timer::instance()->delta_s(lastTick, mStartOfFrameTick);
+         mDeltaSimTime = mDeltaTime * mTimeScale;
+
+         mSimulationClockTime += mDeltaSimTime;
          
          mApplicationSystem->mImpl->mLastFrameStamp = fs;
          traverse(node,nv);
@@ -118,15 +113,18 @@ namespace dtEntity
    };
 
    ////////////////////////////////////////////////////////////////////////////////
-   const StringId ApplicationSystem::TYPE(SID("Application"));
-   const StringId ApplicationSystem::TimeScaleId(SID("TimeScale"));
-   const StringId ApplicationSystem::CmdLineArgsId(SID("CmdLineArgs"));
+   const StringId ApplicationSystem::TYPE(dtEntity::SID("Application"));
+   const StringId ApplicationSystem::TimeScaleId(dtEntity::SID("TimeScale"));
+   const StringId ApplicationSystem::CmdLineArgsId(dtEntity::SID("CmdLineArgs"));
  
    ////////////////////////////////////////////////////////////////////////////////
    ApplicationSystem::ApplicationSystem(EntityManager& em)
       : EntitySystem(em)
       , mImpl(new ApplicationImpl())
    {
+
+      // generate a unique ID
+      mApplicationSystemInfo.mUniqueID = MapSystem::CreateUniqueIdString();
 
       mImpl->mUpdateCallback = new DtEntityUpdateCallback(this);
 
@@ -137,7 +135,6 @@ namespace dtEntity
 
       AddScriptedMethod("getTimeScale", ScriptMethodFunctor(this, &ApplicationSystem::ScriptGetTimeScale));
       AddScriptedMethod("getSimulationTime", ScriptMethodFunctor(this, &ApplicationSystem::ScriptGetSimulationTime));
-      AddScriptedMethod("getSimTimeSinceStartup", ScriptMethodFunctor(this, &ApplicationSystem::ScriptGetSimTimeSinceStartup));
       AddScriptedMethod("getSimulationClockTime", ScriptMethodFunctor(this, &ApplicationSystem::ScriptGetSimulationClockTime));
       AddScriptedMethod("getRealClockTime", ScriptMethodFunctor(this, &ApplicationSystem::ScriptGetRealClockTime));
       AddScriptedMethod("changeTimeSettings", ScriptMethodFunctor(this, &ApplicationSystem::ScriptChangeTimeSettings));
@@ -163,6 +160,15 @@ namespace dtEntity
    ApplicationSystem::~ApplicationSystem()
    {
       delete mImpl;
+   }
+
+   //////////////////////////////////////////////////////////////////////////////
+   void ApplicationSystem::OnPropertyChanged(StringId propname, Property &prop)
+   {
+      if(propname == TimeScaleId)
+      {
+         SetTimeScale(mTimeScale.Get());
+      }
    }
 
    //////////////////////////////////////////////////////////////////////////////
@@ -260,15 +266,16 @@ namespace dtEntity
    }
 
    ///////////////////////////////////////////////////////////////////////////////
-   double ApplicationSystem::GetSimulationTime() const
+   void ApplicationSystem::SetTimeScale(float v)
    {
-      return mImpl->mLastFrameStamp.valid() ? mImpl->mLastFrameStamp->getSimulationTime() : 0;
+      mTimeScale.Set(v);
+      mImpl->mUpdateCallback->mTimeScale = v;
    }
 
    ///////////////////////////////////////////////////////////////////////////////
-   double ApplicationSystem::GetSimTimeSinceStartup() const
+   double ApplicationSystem::GetSimulationTime() const
    {
-      return mImpl->mLastFrameStamp.valid() ? mImpl->mLastFrameStamp->getReferenceTime() : 0;
+      return mImpl->mUpdateCallback->mSimTime;
    }
 
    ///////////////////////////////////////////////////////////////////////////////

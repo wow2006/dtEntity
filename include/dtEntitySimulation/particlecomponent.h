@@ -24,7 +24,7 @@
 #include <dtEntity/defaultentitysystem.h>
 #include <dtEntity/debugdrawmanager.h>
 #include <dtEntity/property.h>
-#include <dtEntity/osgcomponents.h>
+#include <dtEntity/nodecomponent.h>
 #include <osgManipulator/Dragger>
 #include <osgParticle/ParticleSystem>
 #include <osgParticle/ModularEmitter>
@@ -49,6 +49,7 @@ namespace dtEntitySimulation
       static const dtEntity::StringId CounterId;
       static const dtEntity::StringId DebugOnId;
       static const dtEntity::StringId EmissiveParticlesId;
+      static const dtEntity::StringId EnabledId;
       static const dtEntity::StringId LifeTimeId;
       static const dtEntity::StringId LightingId;
       static const dtEntity::StringId MassId;
@@ -155,6 +156,7 @@ namespace dtEntitySimulation
       dtEntity::BoolProperty mDebugOn;
       dtEntity::StringProperty mTextureFile;
       dtEntity::BoolProperty mEmissiveParticles;
+      dtEntity::BoolProperty mEnabled;
       dtEntity::BoolProperty mLighting;
       dtEntity::IntProperty mTextureUnit;
 
@@ -192,6 +194,8 @@ namespace dtEntitySimulation
       typedef dtEntity::DefaultEntitySystem<ParticleComponent> BaseClass;
       
    public:
+
+      static const dtEntity::ComponentType TYPE;
 
       ParticleSystem(dtEntity::EntityManager& em);
       ~ParticleSystem();

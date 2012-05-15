@@ -43,13 +43,13 @@
 
 namespace dtEntity
 {
-   const StringId MapComponent::TYPE(SID("Map"));   
-   const StringId MapComponent::EntityNameId(SID("EntityName"));  
-   const StringId MapComponent::MapNameId(SID("MapName"));  
-   const StringId MapComponent::SpawnerNameId(SID("SpawnerName"));  
-   const StringId MapComponent::UniqueIdId(SID("UniqueId"));  
-   const StringId MapComponent::SaveWithMapId(SID("SaveWithMap"));
-   const StringId MapComponent::VisibleInEntityListId(SID("VisibleInEntityList"));
+   const StringId MapComponent::TYPE(dtEntity::SID("Map"));   
+   const StringId MapComponent::EntityNameId(dtEntity::SID("EntityName"));  
+   const StringId MapComponent::MapNameId(dtEntity::SID("MapName"));  
+   const StringId MapComponent::SpawnerNameId(dtEntity::SID("SpawnerName"));  
+   const StringId MapComponent::UniqueIdId(dtEntity::SID("UniqueId"));  
+   const StringId MapComponent::SaveWithMapId(dtEntity::SID("SaveWithMap"));
+   const StringId MapComponent::VisibleInEntityListId(dtEntity::SID("VisibleInEntityList"));
    
    
    ////////////////////////////////////////////////////////////////////////////
@@ -61,6 +61,10 @@ namespace dtEntity
       , mUniqueId(
            DynamicStringProperty::SetValueCB(this, &MapComponent::SetUniqueId),
            DynamicStringProperty::GetValueCB(this, &MapComponent::GetUniqueId)
+        )
+      , mEntityName(
+           DynamicStringProperty::SetValueCB(this, &MapComponent::SetEntityName),
+           DynamicStringProperty::GetValueCB(this, &MapComponent::GetEntityName)
         )
       , mSpawner(NULL)
       , mOwner(NULL)
@@ -74,39 +78,8 @@ namespace dtEntity
       mSaveWithMap.Set(true);
       mVisibleInEntityList.Set(true);
 
-#ifdef WIN32
-   GUID guid;
-   
-   if( UuidCreate( &guid ) == RPC_S_OK )
-   {
-      unsigned char* guidChar;
+      mUniqueIdStr = MapSystem::CreateUniqueIdString();
 
-      if( UuidToString( const_cast<UUID*>(&guid), &guidChar ) == RPC_S_OK )
-      {
-         mUniqueIdStr = reinterpret_cast<const char*>(guidChar);
-         if(RpcStringFree(&guidChar) != RPC_S_OK) 
-         {
-            LOG_ERROR("Could not free memory.");
-         }
-      }
-      else
-      {
-         LOG_WARNING("Could not convert UniqueId to std::string." );
-      }
-   }
-   else
-   {
-      LOG_WARNING("Could not generate UniqueId." );
-   }
-#else
-   uuid_t uuid;
-   uuid_generate( uuid );
-
-   char buffer[37];
-   uuid_unparse(uuid, buffer);
-
-   mUniqueIdStr = buffer;
-#endif
    }
     
    ////////////////////////////////////////////////////////////////////////////
@@ -115,13 +88,27 @@ namespace dtEntity
    }
 
    ////////////////////////////////////////////////////////////////////////////
-   void MapComponent::OnPropertyChanged(StringId propname, Property& prop)
+   std::string MapComponent::GetEntityName() const
    {
-      if(propname == UniqueIdId)
+      return mEntityNameStr;
+   }
+
+   ////////////////////////////////////////////////////////////////////////////
+   void MapComponent::SetEntityName(const std::string& v)
+   {
+      bool changed = (mEntityNameStr != "" && v != mEntityNameStr);
+
+      mEntityNameStr = v;
+      if(changed)
       {
-         SetUniqueId(mUniqueId.Get());
+         EntityNameUpdatedMessage msg;
+         msg.SetAboutEntityId(mOwner->GetId());
+         msg.SetEntityName(v);
+         msg.SetUniqueId(mUniqueId.Get());
+         mOwner->GetEntityManager().EmitMessage(msg);
       }
    }
+
 
    ////////////////////////////////////////////////////////////////////////////
    std::string MapComponent::GetSpawnerName() const
@@ -145,6 +132,12 @@ namespace dtEntity
    }
 
    ////////////////////////////////////////////////////////////////////////////
+   Spawner* MapComponent::GetSpawner() const
+   {
+      return mSpawner;
+   }
+
+   ////////////////////////////////////////////////////////////////////////////
    void MapComponent::SetUniqueId(const std::string& v) { 
 
       std::string olduid = mUniqueIdStr;
@@ -160,12 +153,12 @@ namespace dtEntity
    }
 
    ////////////////////////////////////////////////////////////////////////////
+   ////////////////////////////////////////////////////////////////////////////
+   const StringId MapSystem::TYPE(dtEntity::SID("Map"));
 
-   const StringId MapSystem::TYPE(SID("Map"));   
-
+   ////////////////////////////////////////////////////////////////////////////
    MapSystem::MapSystem(EntityManager& em)
       : DefaultEntitySystem<MapComponent>(em)
-      , mCurrentScene("")
    {
 
       mSpawnEntityFunctor = MessageFunctor(this, &MapSystem::OnSpawnEntity);
@@ -253,18 +246,12 @@ namespace dtEntity
       {
          mEntitiesByUniqueId[newUniqueId] = id;
       }
-   }
 
-   ////////////////////////////////////////////////////////////////////////////
-   bool MapSystem::CreateScene(const std::string& datapath, const std::string& mapname)
-   {
-      UnloadScene();
-      SceneLoadedMessage msg;
-      msg.SetSceneName(mapname);
+      EntityNameUpdatedMessage msg;
+      msg.SetAboutEntityId(id);
+      msg.SetEntityName(comp->GetEntityName());
+      msg.SetUniqueId(newUniqueId);
       GetEntityManager().EmitMessage(msg);
-      mCurrentScene = mapname;
-      mCurrentSceneDataPath = datapath;
-      return true;
    }
 
    ////////////////////////////////////////////////////////////////////////////
@@ -283,7 +270,7 @@ namespace dtEntity
       for(osgDB::FilePathList::const_iterator i = paths.begin(); i != paths.end(); ++i)
       {
          std::string datapath = osgDB::convertFileNameToNativeStyle(*i);
-         if(abspath.compare(0, datapath.size(), datapath) == 0)
+         if(osgDB::equalCaseInsensitive(datapath, abspath.substr(0, datapath.length())))
          {
             scenedatapath = *i;
             break;
@@ -300,8 +287,6 @@ namespace dtEntity
       SceneLoadedMessage msg;
       msg.SetSceneName(path);
       GetEntityManager().EmitMessage(msg);
-      mCurrentScene = path;
-      mCurrentSceneDataPath = scenedatapath;
       return success;
    }
 
@@ -315,17 +300,8 @@ namespace dtEntity
       {
          UnloadMap(mLoadedMaps.front().mMapPath);
       }
-      mCurrentScene = "";
-      mCurrentSceneDataPath = "";
-      return true;
-   }
 
-   ////////////////////////////////////////////////////////////////////////////
-   bool MapSystem::SaveCurrentScene(bool saveAllMaps)
-   {
-      std::ostringstream os;
-      os << mCurrentSceneDataPath << "/" << mCurrentScene;
-      return SaveScene(os.str(), saveAllMaps);
+      return true;
    }
 
    ////////////////////////////////////////////////////////////////////////////
@@ -377,7 +353,7 @@ namespace dtEntity
       for(osgDB::FilePathList::const_iterator i = paths.begin(); i != paths.end(); ++i)
       {
          std::string datapath = osgDB::convertFileNameToNativeStyle(*i);
-         if(abspath.compare(0, datapath.size(), datapath) == 0)
+         if(osgDB::equalCaseInsensitive(datapath, abspath.substr(0, datapath.length())))
          {
             mapdatapath = *i;
             break;
@@ -808,6 +784,12 @@ namespace dtEntity
       }
       comp->SetUniqueId(m.GetUniqueId());
       comp->SetEntityName(m.GetEntityName());
+
+      EntitySpawnedMessage smsg;
+      smsg.SetSpawnerName(spawnerName);
+      smsg.SetAboutEntityId(entity->GetId());
+      GetEntityManager().EmitMessage(smsg);
+
       if(m.GetAddToScene())
       {
          GetEntityManager().AddToScene(entity->GetId());
@@ -837,17 +819,48 @@ namespace dtEntity
    }
 
    ///////////////////////////////////////////////////////////////////////////////
-   void MapSystem::GetSpawnerCreatedEntities(const std::string& spawnername, std::vector<EntityId>& ids) const
+   void MapSystem::GetSpawnerCreatedEntities(const std::string& spawnername, std::vector<EntityId>& ids, bool recursive) const
    {
       ComponentStore::const_iterator i;
       for(i = mComponents.begin(); i != mComponents.end(); ++i)
       {
-         MapComponent* component = i->second;
-         if(component->GetSpawnerName() == spawnername)
+         MapComponent* component = i->second;         
+         Spawner* spwn = component->GetSpawner();
+
+         while(spwn != NULL)
          {
-            ids.push_back(i->first);
+            if(spwn->GetName() == spawnername)
+            {
+               ids.push_back(i->first);
+               break;
+            }
+            spwn = spwn->GetParent();
+            if(!recursive)
+            {
+               break;
+            }
          }
       }
+   }
+
+   ////////////////////////////////////////////////////////////////////////////////
+   bool MapSystem::IsSpawnOf(EntityId id, const std::string& spawnername) const
+   {
+      const MapComponent* comp = GetComponent(id);
+      if(!comp)
+      {
+         return false;
+      }
+      const Spawner* s = comp->GetSpawner();
+      while(s != NULL)
+      {
+         if(s->GetName() == spawnername)
+         {
+            return true;
+         }
+         s = s->GetParent();
+      }
+      return false;
    }
 
    ////////////////////////////////////////////////////////////////////////////////
@@ -867,6 +880,7 @@ namespace dtEntity
          msg.SetMapName(mc->GetMapName());
          msg.SetEntityName(mc->GetEntityName());
          msg.SetUniqueId(mc->GetUniqueId());
+         msg.SetVisibleInEntityList(mc->GetVisibleInEntityList());
       }
 
       GetEntityManager().EmitMessage(msg);
@@ -889,6 +903,7 @@ namespace dtEntity
          msg.SetMapName(mc->GetMapName());
          msg.SetEntityName(mc->GetEntityName());
          msg.SetUniqueId(mc->GetUniqueId());
+         msg.SetVisibleInEntityList(mc->GetVisibleInEntityList());
       }
       GetEntityManager().EmitMessage(msg);
       return true;
@@ -912,5 +927,46 @@ namespace dtEntity
       {
          return false;
       }
+   }
+
+   ////////////////////////////////////////////////////////////////////////////
+   std::string MapSystem::CreateUniqueIdString()
+   {
+#ifdef WIN32
+   GUID guid;
+
+   if( UuidCreate( &guid ) == RPC_S_OK )
+   {
+      unsigned char* guidChar;
+
+      if( UuidToString( const_cast<UUID*>(&guid), &guidChar ) == RPC_S_OK )
+      {
+         std::string str = reinterpret_cast<const char*>(guidChar);
+         if(RpcStringFree(&guidChar) != RPC_S_OK)
+         {
+            LOG_ERROR("Could not free memory.");
+         }
+         return str;
+      }
+      else
+      {
+         LOG_WARNING("Could not convert UniqueId to std::string." );
+         return "ERROR";
+      }
+   }
+   else
+   {
+      LOG_WARNING("Could not generate UniqueId." );
+      return "ERROR";
+   }
+#else
+   uuid_t uuid;
+   uuid_generate( uuid );
+
+   char buffer[37];
+   uuid_unparse(uuid, buffer);
+
+   return buffer;
+#endif
    }
 }

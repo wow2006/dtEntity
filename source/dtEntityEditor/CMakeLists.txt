@@ -34,7 +34,7 @@ INCLUDE_DIRECTORIES(
   ${CMAKE_SOURCE_DIR}/source/dtEntity/include
   ${CMAKE_SOURCE_DIR}/source/dtEntityQtWidgets/include
   ${QT_INCLUDE_DIR}
-  ${OSG_INCLUDE_DIRS}
+  ${OSG_INCLUDE_DIR}
   ${OPENTHREADS_INCLUDE_DIR}
 )
 
@@ -47,18 +47,15 @@ ADD_EXECUTABLE(${APP_NAME}
     ${RCC_SOURCES}
 )
 
-IF(DYNAMIC_DTENTITY)
-    ADD_DEFINITIONS(-DDTENTITY_LIBRARY)
-ELSE (DYNAMIC_DTENTITY)
-    ADD_DEFINITIONS(-DDTENTITY_LIBRARY_STATIC)
+IF(DTENTITY_LIBRARY_STATIC)
     SET(DTENTITY_PLUGINS dtEntitySimulation dtEntityV8Plugin dtEntityRocket)
-ENDIF(DYNAMIC_DTENTITY)
+ENDIF(DTENTITY_LIBRARY_STATIC)
 
 TARGET_LINK_LIBRARIES(${APP_NAME}
                            ${QT_QTCORE_LIBRARIES}
                            ${QT_QTGUI_LIBRARIES}
                            ${QT_QTOPENGL_LIBRARIES}
-                           ${OSG_LIBRARIES}
+                           ${OPENSCENEGRAPH_LIBRARIES}
                            ${ADDITIONAL_LIBS}
                            ${OPENTHREADS_LIBRARIES}
                            dtEntity
@@ -67,5 +64,5 @@ TARGET_LINK_LIBRARIES(${APP_NAME}
 )
 
 SET_TARGET_PROPERTIES(${APP_NAME} PROPERTIES DEBUG_POSTFIX "${CMAKE_DEBUG_POSTFIX}")
-   
-include(ModuleInstall OPTIONAL)
+
+

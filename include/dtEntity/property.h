@@ -196,6 +196,7 @@ namespace dtEntity
       virtual osg::Vec3d Vec3dValue() const;
       virtual osg::Vec4d Vec4dValue() const;
       virtual osg::Quat QuatValue() const;
+      virtual osg::Matrix MatrixValue() const;
       
    
       PropertyArray Get() const { return mValue; }
@@ -226,7 +227,13 @@ namespace dtEntity
        * Insert into array at given index. Ownership is taken by ArrayProperty -
        * property is deleted in destructor
        */
-      void Insert(Property* prop, unsigned int index);
+      void Insert(unsigned int index, Property* prop);
+
+      /**
+       * @return property at given index
+       */
+      Property* Get(unsigned int index);
+      const Property* Get(unsigned int index) const;
 
       /**
        * Remove from array and delete prop
@@ -467,7 +474,7 @@ namespace dtEntity
 
       virtual const std::string StringValue() const;
       virtual StringId StringIdValue() const;
-      virtual void SetStringId(dtEntity::StringId v) { Set(GetStringFromSID(v)); }
+      //virtual void SetStringId(dtEntity::StringId v) { Set(GetStringFromSID(v)); }
 
       const std::string Get() const { return mValue; }
 
@@ -575,6 +582,9 @@ namespace dtEntity
       virtual void SetVec3(const osg::Vec3& v) { Set(v); }
       virtual osg::Vec3d Vec3dValue() const;
       virtual void SetVec3D(const osg::Vec3d& v) { Set(v); }
+
+      virtual osg::Vec2f Vec2Value() const;
+      virtual osg::Vec2d Vec2dValue() const;
       virtual const std::string StringValue() const;
       osg::Vec3f Get() const { return mValue; }
 
@@ -603,6 +613,11 @@ namespace dtEntity
       virtual void SetVec4D(const osg::Vec4d& v) { Set(v); }
       virtual const std::string StringValue() const;
       osg::Vec4f Get() const { return mValue; }
+
+      virtual osg::Vec2f Vec2Value() const;
+      virtual osg::Vec2d Vec2dValue() const;
+      virtual osg::Vec3f Vec3Value() const;
+      virtual osg::Vec3d Vec3dValue() const;
 
       virtual Property* Clone() const;
       virtual bool operator==(const Property& other) const;
@@ -658,6 +673,9 @@ namespace dtEntity
       virtual const std::string StringValue() const;
       osg::Vec3d Get() const { return mValue; }
 
+      virtual osg::Vec2f Vec2Value() const;
+      virtual osg::Vec2d Vec2dValue() const;
+
       virtual Property* Clone() const;
       virtual bool operator==(const Property& other) const;
       void Set(const osg::Vec3d& v) { mValue = v; }
@@ -683,6 +701,11 @@ namespace dtEntity
       virtual void SetVec4D(const osg::Vec4d& v) { Set(v); }
       virtual const std::string StringValue() const;
       osg::Vec4d Get() const { return mValue; }
+
+      virtual osg::Vec2f Vec2Value() const;
+      virtual osg::Vec2d Vec2dValue() const;
+      virtual osg::Vec3f Vec3Value() const;
+      virtual osg::Vec3d Vec3dValue() const;
 
       virtual Property* Clone() const;
       virtual bool operator==(const Property& other) const;

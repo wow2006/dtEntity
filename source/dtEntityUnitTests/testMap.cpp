@@ -21,10 +21,10 @@
 
 #include <UnitTest++.h>
 #include <dtEntity/initosgviewer.h>
-#include <dtEntity/osgcomponents.h>
 #include <dtEntity/mapcomponent.h>
 #include <dtEntity/spawner.h>
 #include <dtEntity/entitymanager.h> 
+#include <dtEntity/positionattitudetransformcomponent.h>
 #include <osgDB/FileUtils>
 
 using namespace UnitTest;
@@ -150,13 +150,13 @@ TEST_FIXTURE(MapFixture, SpawnerPropertyValuesCorrect)
 
    const Property* arrayprop = GetProp(compprops, "ArrayProperty");
    dtEntity::PropertyArray arr = arrayprop->ArrayValue();
-   CHECK_EQUAL(2, arr.size());
+   CHECK_EQUAL((unsigned int)2, arr.size());
    CHECK_EQUAL(arr[0]->StringValue(), "ArrayValOne");
    CHECK_EQUAL(arr[1]->StringValue(), "ArrayValTwo");
 
    const Property* grpprop = GetProp(compprops, "GroupProperty");
    dtEntity::PropertyGroup grp = grpprop->GroupValue();
-   CHECK_EQUAL(2, grp.size());
+   CHECK_EQUAL((unsigned int)2, grp.size());
    CHECK(grp.find(dtEntity::SID("GroupNameOne")) != grp.end());
    CHECK(grp.find(dtEntity::SID("GroupNameTwo")) != grp.end());
    CHECK_EQUAL(grp[dtEntity::SID("GroupNameOne")]->StringValue(), "GroupValOne");
@@ -169,6 +169,7 @@ TEST_FIXTURE(MapFixture, SaveMapTest)
    std::string mapname = "TestData/testmap_generated.dtemap";
 
    {
+      assert(!osgDB::getDataFilePathList().empty());
       mMapSystem->AddEmptyMap(osgDB::getDataFilePathList().front(), mapname);
       dtEntity::Entity* entity;
       mEntityManager.CreateEntity(entity);
@@ -214,7 +215,7 @@ TEST_FIXTURE(MapFixture, SaveMapTest)
       CHECK_CLOSE(pos[0], 1, 0.1);
       CHECK_CLOSE(pos[1], 2, 0.1);
       CHECK_CLOSE(pos[2], 3, 0.1);
-      CHECK_EQUAL(2, transcomp->GetChildren().size());
+      CHECK_EQUAL((unsigned int)2, transcomp->GetChildren().size());
       dtEntity::Property* p1 = transcomp->GetChildren()[0];
       dtEntity::Property* p2 = transcomp->GetChildren()[1];
 
@@ -261,7 +262,7 @@ TEST_FIXTURE(MapFixture, SaveSpawner)
       CHECK_EQUAL("TestGuiCategory", spawner1->GetGUICategory());
       CHECK_EQUAL("TestIconPath", spawner1->GetIconPath());
       DynamicPropertyContainer props = spawner1->GetComponentValues(dtEntity::SID("TestComponent"));
-      CHECK_EQUAL(2, props.GetAllProperties().size());
+      CHECK_EQUAL((unsigned int)2, props.GetAllProperties().size());
       CHECK_EQUAL("StringPropValue1", props.Get(dtEntity::SID("StringProp1"))->StringValue());
       CHECK_EQUAL("StringPropValue2", props.Get(dtEntity::SID("StringProp2"))->StringValue());
    }

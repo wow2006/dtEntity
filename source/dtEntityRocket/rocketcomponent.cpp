@@ -280,10 +280,13 @@ namespace dtEntityRocket
   
    ////////////////////////////////////////////////////////////////////////////
    ////////////////////////////////////////////////////////////////////////////
+   const dtEntity::StringId RocketSystem::TYPE(dtEntity::SID("Rocket"));
 
+   ////////////////////////////////////////////////////////////////////////////
    RocketSystem::RocketSystem(dtEntity::EntityManager& em)
       : BaseClass(em)
    {
+
      // create and set libRocket to OSG interfaces
      osgLibRocket::RenderInterface* renderer = new osgLibRocket::RenderInterface();
      Rocket::Core::SetRenderInterface(renderer);
@@ -297,19 +300,13 @@ namespace dtEntityRocket
      Rocket::Core::Initialise();
      Rocket::Controls::Initialise();
 
-     // EventInstancer* ei = new EventInstancer(GetEntityManager().GetMessagePump());
-     // Rocket::Core::Factory::RegisterEventInstancer(ei)->RemoveReference();
-
-     
      dtEntityWrappers::ScriptSystem* scriptsys;
      if(em.GetEntitySystem(dtEntityWrappers::ScriptSystem::TYPE, scriptsys))
      {
+        InitRocketSystemWrapper(scriptsys);
         EventListenerInstancer* eli = new EventListenerInstancer(scriptsys->GetGlobalContext(), GetEntityManager().GetMessagePump());
         Rocket::Core::Factory::RegisterEventListenerInstancer(eli)->RemoveReference();
      }
-     
-	  
-
    }
 
    ////////////////////////////////////////////////////////////////////////////
