@@ -4,11 +4,11 @@ FIND_PACKAGE(V8 REQUIRED)
 
 
 IF(BUILD_CEGUI)
-	FIND_PACKAGE(CEGUI REQUIRED)
+    FIND_PACKAGE(CEGUI REQUIRED)
   INCLUDE_DIRECTORIES(${CEGUI_INCLUDE_DIR})
 ENDIF(BUILD_CEGUI)
 
-INCLUDE_DIRECTORIES( 
+INCLUDE_DIRECTORIES(
   ${CMAKE_CURRENT_SOURCE_DIR}/../../include/
   ${OSG_INCLUDE_DIR}
   ${V8_INCLUDE_DIR}
@@ -17,44 +17,44 @@ INCLUDE_DIRECTORIES(
 SET(HEADER_PATH ${CMAKE_CURRENT_SOURCE_DIR}/../../include/${LIB_NAME})
 
 SET(LIB_PUBLIC_HEADERS
-	${HEADER_PATH}/buffer.h
-	${HEADER_PATH}/bytestorage.h
-	${HEADER_PATH}/componentwrapper.h
-	${HEADER_PATH}/debugdrawmanagerwrapper.h
-	${HEADER_PATH}/entitymanagerwrapper.h
-	${HEADER_PATH}/entitysystemjs.h
-	${HEADER_PATH}/entitysystemwrapper.h
-	${HEADER_PATH}/export.h
-	${HEADER_PATH}/file.h
-	${HEADER_PATH}/globalfunctions.h
-	${HEADER_PATH}/inputhandlerwrapper.h
-	${HEADER_PATH}/loggerwrapper.h
-	${HEADER_PATH}/mapsystemwrapper.h
-	${HEADER_PATH}/messages.h
-	${HEADER_PATH}/propertyconverter.h
-	${HEADER_PATH}/screenwrapper.h
-	${HEADER_PATH}/scriptcomponent.h
-	${HEADER_PATH}/v8helpers.h
-	${HEADER_PATH}/wrappers.h
+    ${HEADER_PATH}/buffer.h
+    ${HEADER_PATH}/bytestorage.h
+    ${HEADER_PATH}/componentwrapper.h
+    ${HEADER_PATH}/debugdrawmanagerwrapper.h
+    ${HEADER_PATH}/entitymanagerwrapper.h
+    ${HEADER_PATH}/entitysystemjs.h
+    ${HEADER_PATH}/entitysystemwrapper.h
+    ${HEADER_PATH}/export.h
+    ${HEADER_PATH}/file.h
+    ${HEADER_PATH}/globalfunctions.h
+    ${HEADER_PATH}/inputhandlerwrapper.h
+    ${HEADER_PATH}/loggerwrapper.h
+    ${HEADER_PATH}/mapsystemwrapper.h
+    ${HEADER_PATH}/messages.h
+    ${HEADER_PATH}/propertyconverter.h
+    ${HEADER_PATH}/screenwrapper.h
+    ${HEADER_PATH}/scriptcomponent.h
+    ${HEADER_PATH}/v8helpers.h
+    ${HEADER_PATH}/wrappers.h
 )
 
 SET(LIB_SOURCES
-	buffer.cpp
-	bytestorage.cpp
-	componentwrapper.cpp
-	debugdrawmanagerwrapper.cpp
-	entitymanagerwrapper.cpp
-	entitysystemjs.cpp
-	entitysystemwrapper.cpp
-	file.cpp
-	globalfunctions.cpp
-	inputhandlerwrapper.cpp	
+    buffer.cpp
+    bytestorage.cpp
+    componentwrapper.cpp
+    debugdrawmanagerwrapper.cpp
+    entitymanagerwrapper.cpp
+    entitysystemjs.cpp
+    entitysystemwrapper.cpp
+    file.cpp
+    globalfunctions.cpp
+    inputhandlerwrapper.cpp
     loggerwrapper.cpp
-	mapsystemwrapper.cpp
-	propertyconverter.cpp
-	screenwrapper.cpp
-	v8helpers.cpp
-	wrappers.cpp
+    mapsystemwrapper.cpp
+    propertyconverter.cpp
+    screenwrapper.cpp
+    v8helpers.cpp
+    wrappers.cpp
 )
 
 SET(LIB_SOURCES_REPLACE
@@ -70,24 +70,24 @@ SET(WRAPLIBRARIES dtEntity
 )
 
 IF(BUILD_CEGUI)
-	LIST(APPEND WRAPLIBRARIES ${CEGUI_LIBRARIES})
-	LIST(APPEND LIB_PUBLIC_HEADERS ${HEADER_PATH}/guiwidgetwrapper.h
-								   ${HEADER_PATH}/guiwrapper.h)
-	LIST(APPEND LIB_SOURCES		   guiwidgetwrapper.cpp
-								   guiwrapper.cpp)
-	
+    LIST(APPEND WRAPLIBRARIES ${CEGUI_LIBRARIES})
+    LIST(APPEND LIB_PUBLIC_HEADERS ${HEADER_PATH}/guiwidgetwrapper.h
+                                   ${HEADER_PATH}/guiwrapper.h)
+    LIST(APPEND LIB_SOURCES		   guiwidgetwrapper.cpp
+                                   guiwrapper.cpp)
+
 ENDIF(BUILD_CEGUI)
 
 IF(BUILD_CAL3D)
-	LIST(APPEND LIB_PUBLIC_HEADERS ${HEADER_PATH}/animationsystemwrapper.h)
-	LIST(APPEND LIB_SOURCES		   animationsystemwrapper.cpp)
-	LIST(APPEND WRAPLIBRARIES      ${DTANIM_LIBRARIES}
-	)
+    LIST(APPEND LIB_PUBLIC_HEADERS ${HEADER_PATH}/animationsystemwrapper.h)
+    LIST(APPEND LIB_SOURCES		   animationsystemwrapper.cpp)
+    LIST(APPEND WRAPLIBRARIES      ${DTANIM_LIBRARIES}
+    )
 ENDIF(BUILD_CAL3D)
 
 IF(BUILD_OPENAL)
     LIST(APPEND LIB_PUBLIC_HEADERS ${HEADER_PATH}/soundsystemwrapper.h)
-	LIST(APPEND LIB_SOURCES		   soundsystemwrapper.cpp)
+    LIST(APPEND LIB_SOURCES		   soundsystemwrapper.cpp)
 ENDIF(BUILD_OPENAL)
 
 IF (MSVC)
@@ -100,7 +100,7 @@ REPLACE_SIDS_IN_SOURCE(LIB_SOURCES_OUT ${LIB_SOURCES_REPLACE})
 
 ADD_LIBRARY(${LIB_NAME} ${DTENTITY_LIBS_DYNAMIC_OR_STATIC}
   ${LIB_PUBLIC_HEADERS}
-	${LIB_SOURCES}
+    ${LIB_SOURCES}
   ${LIB_SOURCES_OUT}
   ${LIB_SOURCES_REPLACE}
 )
@@ -109,7 +109,11 @@ ADD_LIBRARY(${LIB_NAME} ${DTENTITY_LIBS_DYNAMIC_OR_STATIC}
 
 IF (MSVC)
   LIST(APPEND WRAPLIBRARIES ws2_32.lib winmm.lib)
-ENDIF (MSVC)
+ELSE()
+  FIND_LIBRARY(ICONV_LIBRARY iconv)
+  LIST(APPEND WRAPLIBRARIES ${ICONV_LIBRARY})
+ENDIF()
+
 
 
 

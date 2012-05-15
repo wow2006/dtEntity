@@ -1,5 +1,5 @@
 CMAKE_MINIMUM_REQUIRED(VERSION 2.6.0 FATAL_ERROR)
- 
+
 PROJECT(dtEntity)
 
   SET(CMAKE_DEBUG_POSTFIX  "d")
@@ -60,20 +60,20 @@ SET(TARGET_COMMON_LIBRARIES
 )
 
 #PROJECT_BINARY_DIR for generated config header file
-INCLUDE_DIRECTORIES(include ${OSG_INCLUDE_DIR} $ENV{OSG_DIR}/include ${PROJECT_BINARY_DIR}/include)
+INCLUDE_DIRECTORIES(${PROJECT_BINARY_DIR}/include )
 
 #to allow usage of hash_map without warnings:
 IF(CMAKE_COMPILER_IS_GNUCXX)
   ADD_DEFINITIONS(${CMAKE_CXX_FLAGS} "-Wno-deprecated")
 ENDIF(CMAKE_COMPILER_IS_GNUCXX)
 
-if(APPLE) 
+if(APPLE)
     if(NOT DTENTITY_CONFIG_HAS_BEEN_RUN_BEFORE)
-        if ("${CMAKE_OSX_SYSROOT}" MATCHES ".*/Developer/SDKs/MacOSX10.7.sdk") 
+        if ("${CMAKE_OSX_SYSROOT}" MATCHES ".*/Developer/SDKs/MacOSX10.7.sdk")
             MESSAGE(STATUS "MacOSX10.7.sdk")
             SET(CMAKE_OSX_ARCHITECTURES "x86_64" CACHE STRING "Build architectures for OSX" FORCE)
             SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -mmacosx-version-min=10.7 -fvisibility-inlines-hidden" CACHE STRING "Flags used by the compiler during all build types." FORCE)
-        endif()    
+        endif()
      endif()
 endif()
 

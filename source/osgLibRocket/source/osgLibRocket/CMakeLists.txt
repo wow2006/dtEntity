@@ -4,19 +4,19 @@ SET(HEADER_PATH ${CMAKE_CURRENT_SOURCE_DIR}/include/osgLibRocket)
 SET(SOURCE_PATH ${CMAKE_CURRENT_SOURCE_DIR}/source)
 
 SET(LIB_PUBLIC_HEADERS
-	${HEADER_PATH}/export.h
-	${HEADER_PATH}/FileInterface
-	${HEADER_PATH}/GuiNode
-	${HEADER_PATH}/RenderInterface
-	${HEADER_PATH}/SystemInterface
+    ${HEADER_PATH}/export.h
+    ${HEADER_PATH}/FileInterface
+    ${HEADER_PATH}/GuiNode
+    ${HEADER_PATH}/RenderInterface
+    ${HEADER_PATH}/SystemInterface
 )
 
 SET(LIB_SOURCES
 
-	${SOURCE_PATH}/FileInterface.cpp
-	${SOURCE_PATH}/GuiNode.cpp
-	${SOURCE_PATH}/RenderInterface.cpp
-	${SOURCE_PATH}/SystemInterface.cpp
+    ${SOURCE_PATH}/FileInterface.cpp
+    ${SOURCE_PATH}/GuiNode.cpp
+    ${SOURCE_PATH}/RenderInterface.cpp
+    ${SOURCE_PATH}/SystemInterface.cpp
 )
 
 
@@ -45,10 +45,10 @@ INCLUDE(ModuleInstall OPTIONAL)
 
 
 TARGET_LINK_LIBRARIES(${LIB_NAME}   ${OPENSCENEGRAPH_LIBRARIES}
-									${OPENTHREADS_LIBRARIES}
-									${LIBROCKET_CORE_LIBRARY}
-									${LIBROCKET_CONTROLS_LIBRARY}
-									${LIBROCKET_DEBUGGER_LIBRARY}
+                                    ${OPENTHREADS_LIBRARIES}
+                                    ${LIBROCKET_CORE_LIBRARY}
+                                    ${LIBROCKET_CONTROLS_LIBRARY}
+                                    ${LIBROCKET_DEBUGGER_LIBRARY}
 )
 
   SET_TARGET_PROPERTIES(${LIB_NAME} PROPERTIES DEBUG_POSTFIX "${CMAKE_DEBUG_POSTFIX}")

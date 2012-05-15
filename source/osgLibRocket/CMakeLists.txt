@@ -10,7 +10,7 @@ SET(CMAKE_DEBUG_POSTFIX "d")
 
 FIND_PACKAGE(LibRocket REQUIRED)
 
-FIND_PACKAGE(OpenSceneGraph REQUIRED osgDB osgUtil osgViewer)
+FIND_PACKAGE(OpenSceneGraph REQUIRED osgDB osgUtil osgViewer osgGA)
 
 ADD_SUBDIRECTORY(source/osgLibRocket)
 ADD_SUBDIRECTORY(source/sample-drag)
