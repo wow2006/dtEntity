@@ -35,7 +35,7 @@ INCLUDE(DTEntityMacroUtils)
 
 #on windows, try to use provided dtEntity external dependency folder
 IF(WIN32)
-  FIND_PACKAGE(DTENTITY_EXT_DEP REQUIRED)
+  FIND_PACKAGE(DTENTITY_EXT_DEP)
 ENDIF(WIN32)
 
 FIND_PACKAGE(OpenSceneGraph REQUIRED osgAnimation osgDB osgGA osgParticle osgShadow osgSim osgText osgUtil osgViewer osgManipulator)
@@ -91,11 +91,11 @@ ADD_SUBDIRECTORY(source)
 OPTION(BUILD_EXAMPLES "Build examples" OFF)
 IF(BUILD_EXAMPLES)
   ADD_SUBDIRECTORY(examples)
-ENDIF(BUILD_EXAMPLES)      
+ENDIF(BUILD_EXAMPLES)
 
 if(UNIX)
-    install(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/BaseAssets/ DESTINATION share/dtEntity/BaseAssets PATTERN ".svn" EXCLUDE)        
+    install(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/BaseAssets/ DESTINATION share/dtEntity/BaseAssets PATTERN ".svn" EXCLUDE)
 else()
-    install(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/BaseAssets/ DESTINATION BaseAssets PATTERN ".svn" EXCLUDE)        
+    install(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/BaseAssets/ DESTINATION BaseAssets PATTERN ".svn" EXCLUDE)
 endif()
 
