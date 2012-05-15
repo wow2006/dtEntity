@@ -91,5 +91,11 @@ ADD_SUBDIRECTORY(source)
 OPTION(BUILD_EXAMPLES "Build examples" OFF)
 IF(BUILD_EXAMPLES)
   ADD_SUBDIRECTORY(examples)
-ENDIF(BUILD_EXAMPLES)
+ENDIF(BUILD_EXAMPLES)      
+
+if(UNIX)
+    install(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/BaseAssets/ DESTINATION share/dtEntity/BaseAssets PATTERN ".svn" EXCLUDE)        
+else()
+    install(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/BaseAssets/ DESTINATION BaseAssets PATTERN ".svn" EXCLUDE)        
+endif()
 
