@@ -20,8 +20,12 @@
 
 #include <dtEntity/mapcomponent.h>
 
-#include <dtEntity/basemessages.h>
+#include <dtEntity/uniqueid.h>
 #include <dtEntity/rapidxmlmapencoder.h>
+
+#include <dtEntity/systemmessages.h>
+#include <dtEntity/commandmessages.h>
+#include <dtEntity/dtentity_config.h>
 #include <assert.h>
 #include <dtEntity/spawner.h>
 #include <sstream>
@@ -30,16 +34,10 @@
 #include <OpenThreads/ScopedLock>
 #include <fstream>
 
-
-#ifdef WIN32
-   #include <Rpc.h>
-   #include <Rpcdce.h>
-#else
-#include <uuid/uuid.h>
-   #include <sys/stat.h>
-   #include <sys/types.h>
-
+#if PROTOBUF_FOUND
+#include <dtEntity/protobufmapencoder.h>
 #endif
+
 
 namespace dtEntity
 {
@@ -54,17 +52,17 @@ namespace dtEntity
    
    ////////////////////////////////////////////////////////////////////////////
    MapComponent::MapComponent()
-      : mSpawnerNameProp(
+      : mEntityName(
+        DynamicStringProperty::SetValueCB(this, &MapComponent::SetEntityName),
+        DynamicStringProperty::GetValueCB(this, &MapComponent::GetEntityName)
+        )
+      , mSpawnerNameProp(
            DynamicStringProperty::SetValueCB(this, &MapComponent::SetSpawnerName),
            DynamicStringProperty::GetValueCB(this, &MapComponent::GetSpawnerName)
         )
       , mUniqueId(
            DynamicStringProperty::SetValueCB(this, &MapComponent::SetUniqueId),
            DynamicStringProperty::GetValueCB(this, &MapComponent::GetUniqueId)
-        )
-      , mEntityName(
-           DynamicStringProperty::SetValueCB(this, &MapComponent::SetEntityName),
-           DynamicStringProperty::GetValueCB(this, &MapComponent::GetEntityName)
         )
       , mSpawner(NULL)
       , mOwner(NULL)
@@ -78,7 +76,7 @@ namespace dtEntity
       mSaveWithMap.Set(true);
       mVisibleInEntityList.Set(true);
 
-      mUniqueIdStr = MapSystem::CreateUniqueIdString();
+      mUniqueIdStr = CreateUniqueIdString();
 
    }
     
@@ -96,11 +94,9 @@ namespace dtEntity
    ////////////////////////////////////////////////////////////////////////////
    void MapComponent::SetEntityName(const std::string& v)
    {
-      bool changed = (mEntityNameStr != "" && v != mEntityNameStr);
-
-      mEntityNameStr = v;
-      if(changed)
+      if(v != mEntityNameStr)
       {
+         mEntityNameStr = v;
          EntityNameUpdatedMessage msg;
          msg.SetAboutEntityId(mOwner->GetId());
          msg.SetEntityName(v);
@@ -143,12 +139,29 @@ namespace dtEntity
       std::string olduid = mUniqueIdStr;
       if(olduid == v) return;
 
-      mUniqueIdStr = v;
       if(mOwner != NULL)
       {
          MapSystem* ms;
          mOwner->GetEntityManager().GetEntitySystem(TYPE, ms);
-         ms->OnEntityChangedUniqueId(mOwner->GetId(), olduid, v);
+
+         int inc = 0;
+         bool success = false;
+
+         while(!success)
+         {
+            std::ostringstream os;
+            os << v;
+            if(inc != 0)
+            {
+               os << "_" << inc;
+            }
+            ++inc;
+            success = ms->OnEntityChangedUniqueId(mOwner->GetId(), olduid, os.str());
+            if(success)
+            {
+               mUniqueIdStr = os.str();
+            }
+         }
       }
    }
 
@@ -176,14 +189,25 @@ namespace dtEntity
    ////////////////////////////////////////////////////////////////////////////
    MapSystem::~MapSystem()
    {
+      for(MapEncoders::iterator i = mMapEncoders.begin(); i != mMapEncoders.end(); ++i)
+      {
+         delete *i;
+      }
+
+      GetEntityManager().UnregisterForMessages(SpawnEntityMessage::TYPE, mSpawnEntityFunctor);
+      GetEntityManager().UnregisterForMessages(DeleteEntityMessage::TYPE, mDeleteEntityFunctor);
+      GetEntityManager().UnregisterForMessages(StopSystemMessage::TYPE, mStopSystemFunctor);
    }
 
    ////////////////////////////////////////////////////////////////////////////
    void MapSystem::OnAddedToEntityManager(dtEntity::EntityManager& em)
    {
       em.AddEntitySystemRequestCallback(this);
+#if PROTOBUF_FOUND
+      AddMapEncoder(new ProtoBufMapEncoder(em));
+#endif
+      AddMapEncoder(new RapidXMLMapEncoder(em));
 
-      mMapEncoder = new RapidXMLMapEncoder(em);
    }
 
    ////////////////////////////////////////////////////////////////////////////
@@ -215,43 +239,45 @@ namespace dtEntity
       ComponentStore::iterator i = mComponents.find(eid);
       if(i != mComponents.end())
       {
-         mEntitiesByUniqueId.erase(i->second->GetUniqueId());
+         size_t s = mEntitiesByUniqueId.erase(i->second->GetUniqueId());
+         assert(s == 1);
       }
       return BaseClass::DeleteComponent(eid);
    }
 
    ////////////////////////////////////////////////////////////////////////////
-   void MapSystem::OnEntityChangedUniqueId(EntityId id, const std::string& oldUniqueId, const std::string& newUniqueId)
+   bool MapSystem::OnEntityChangedUniqueId(EntityId id, const std::string& oldUniqueId, const std::string& newUniqueId)
    {
+      if(oldUniqueId == newUniqueId)
+      {
+         return true;
+      }
+
       typedef std::map<std::string, EntityId> UIMap;
       MapComponent* comp = GetComponent(id);
       assert(comp != NULL);
 
-      UIMap::iterator i = mEntitiesByUniqueId.find(oldUniqueId);
-      if(i != mEntitiesByUniqueId.end())
-      {
-         if(oldUniqueId == newUniqueId)
-         {
-            return;
-         }
-         mEntitiesByUniqueId.erase(i);
-      }
-
       UIMap::iterator j = mEntitiesByUniqueId.find(newUniqueId);
       if(j != mEntitiesByUniqueId.end())
       {
-         LOG_ERROR("An entity with unique id " << newUniqueId << " already exists!");
+         return false;
       }  
-      else
+
+      UIMap::iterator i = mEntitiesByUniqueId.find(oldUniqueId);
+      if(i != mEntitiesByUniqueId.end())
       {
-         mEntitiesByUniqueId[newUniqueId] = id;
+         mEntitiesByUniqueId.erase(i);
       }
+
+      mEntitiesByUniqueId[newUniqueId] = id;
+
 
       EntityNameUpdatedMessage msg;
       msg.SetAboutEntityId(id);
       msg.SetEntityName(comp->GetEntityName());
       msg.SetUniqueId(newUniqueId);
       GetEntityManager().EmitMessage(msg);
+      return true;
    }
 
    ////////////////////////////////////////////////////////////////////////////
@@ -282,7 +308,14 @@ namespace dtEntity
          return false;
       }
 
-      bool success = mMapEncoder->LoadSceneFromFile(path);
+      MapEncoder* enc = GetEncoderForScene(osgDB::getFileExtension(path));
+      if(!enc)
+      {
+         LOG_ERROR("Could not load scene: Loader not found for extension " << osgDB::getFileExtension(path));
+         return false;
+      }
+
+      bool success = enc->LoadSceneFromFile(path);
       
       SceneLoadedMessage msg;
       msg.SetSceneName(path);
@@ -307,7 +340,13 @@ namespace dtEntity
    ////////////////////////////////////////////////////////////////////////////
    bool MapSystem::SaveScene(const std::string& path, bool saveAllMaps)
    {
-     bool success = mMapEncoder->SaveSceneToFile(path);
+      MapEncoder* enc = GetEncoderForScene(osgDB::getFileExtension(path));
+      if(!enc)
+      {
+         LOG_ERROR("Could not save scene: Loader not found for extension " << osgDB::getFileExtension(path));
+         return false;
+      }
+     bool success = enc->SaveSceneToFile(path);
 
       if(success && saveAllMaps)
       {
@@ -346,6 +385,13 @@ namespace dtEntity
          return false;
       }
 
+      MapEncoder* enc = GetEncoderForMap(osgDB::getFileExtension(path));
+      if(!enc)
+      {
+         LOG_ERROR("Could not load map: Loader not found for extension " << osgDB::getFileExtension(path));
+         return false;
+      }
+
       // get data path containing this map
       std::string mapdatapath = "";
       osgDB::FilePathList paths = osgDB::getDataFilePathList();
@@ -359,7 +405,7 @@ namespace dtEntity
             break;
          }
       }
-      unsigned int mapsaveorder = mLoadedMaps.size();
+      LoadedMaps::size_type mapsaveorder = mLoadedMaps.size();
 
       assert(mapdatapath != "");
 
@@ -369,10 +415,10 @@ namespace dtEntity
       msg.SetSaveOrder(mapsaveorder);
       GetEntityManager().EmitMessage(msg);
 
-      bool success = mMapEncoder->LoadMapFromFile(path);
+      bool success = enc->LoadMapFromFile(path);
       if(success)
       {
-         mLoadedMaps.push_back(MapData(path, mapdatapath, mLoadedMaps.size()));
+         mLoadedMaps.push_back(MapData(path, mapdatapath, static_cast<unsigned int>(mLoadedMaps.size())));
 
          MapLoadedMessage msg1;
          msg1.SetMapPath(path);
@@ -383,6 +429,7 @@ namespace dtEntity
       return success;
    }
 
+   ////////////////////////////////////////////////////////////////////////////
    MapSystem::SpawnerStorage GetChildren(MapSystem::SpawnerStorage& spawners, const std::string& spawnername)
    {
       MapSystem::SpawnerStorage ret;
@@ -539,6 +586,13 @@ namespace dtEntity
    ////////////////////////////////////////////////////////////////////////////
    bool MapSystem::SaveMap(const std::string& mappath)
    {
+      MapEncoder* enc = GetEncoderForMap(osgDB::getFileExtension(mappath));
+      if(!enc)
+      {
+         LOG_ERROR("Could not save map: Loader not found for extension " << osgDB::getFileExtension(mappath));
+         return false;
+      }
+
       std::string datapath = "";
       for(LoadedMaps::const_iterator i = mLoadedMaps.begin(); i != mLoadedMaps.end(); ++i)
       {
@@ -556,7 +610,7 @@ namespace dtEntity
 
       std::ostringstream os;
       os << datapath << "/" << mappath;
-      bool success = mMapEncoder->SaveMapToFile(mappath, os.str());
+      bool success = enc->SaveMapToFile(mappath, os.str());
       
       return success;
    }
@@ -569,7 +623,15 @@ namespace dtEntity
          LOG_ERROR("Cannot save map as: No map of this name exists!");
          return false;
       }
-      bool success = mMapEncoder->SaveMapToFile(path, copypath);
+
+      MapEncoder* enc = GetEncoderForMap(osgDB::getFileExtension(copypath));
+      if(!enc)
+      {
+         LOG_ERROR("Could not save map: Loader not found for extension " << osgDB::getFileExtension(copypath));
+         return false;
+      }
+
+      bool success = enc->SaveMapToFile(path, copypath);
       
       return success;
    }
@@ -583,7 +645,7 @@ namespace dtEntity
       }
       if(osgDB::findDataFile(mapname) != "")
       {
-         mLoadedMaps.push_back(MapData(mapname, dataPath, mLoadedMaps.size()));
+         mLoadedMaps.push_back(MapData(mapname, dataPath, static_cast<unsigned int>(mLoadedMaps.size())));
          return false;
       }
 
@@ -600,7 +662,7 @@ namespace dtEntity
       MapBeginLoadMessage msg;
       msg.SetMapPath(mapname);
       GetEntityManager().EmitMessage(msg);
-      mLoadedMaps.push_back(MapData(mapname, dataPath, mLoadedMaps.size()));
+      mLoadedMaps.push_back(MapData(mapname, dataPath, static_cast<unsigned int>(mLoadedMaps.size())));
       MapLoadedMessage msg2;
       msg2.SetMapPath(mapname);
       GetEntityManager().EmitMessage(msg2);
@@ -930,43 +992,34 @@ namespace dtEntity
    }
 
    ////////////////////////////////////////////////////////////////////////////
-   std::string MapSystem::CreateUniqueIdString()
+   void MapSystem::AddMapEncoder(MapEncoder* ec)
    {
-#ifdef WIN32
-   GUID guid;
+      mMapEncoders.push_back(ec);
+   }
 
-   if( UuidCreate( &guid ) == RPC_S_OK )
+   ////////////////////////////////////////////////////////////////////////////
+   MapEncoder* MapSystem::GetEncoderForMap(const std::string& extension) const
    {
-      unsigned char* guidChar;
-
-      if( UuidToString( const_cast<UUID*>(&guid), &guidChar ) == RPC_S_OK )
+      for(MapEncoders::const_iterator i = mMapEncoders.begin(); i != mMapEncoders.end(); ++i)
       {
-         std::string str = reinterpret_cast<const char*>(guidChar);
-         if(RpcStringFree(&guidChar) != RPC_S_OK)
+         if((*i)->AcceptsMapExtension(extension))
          {
-            LOG_ERROR("Could not free memory.");
+            return *i;
          }
-         return str;
       }
-      else
-      {
-         LOG_WARNING("Could not convert UniqueId to std::string." );
-         return "ERROR";
-      }
+      return NULL;
    }
-   else
+
+   ////////////////////////////////////////////////////////////////////////////
+   MapEncoder* MapSystem::GetEncoderForScene(const std::string& extension) const
    {
-      LOG_WARNING("Could not generate UniqueId." );
-      return "ERROR";
-   }
-#else
-   uuid_t uuid;
-   uuid_generate( uuid );
-
-   char buffer[37];
-   uuid_unparse(uuid, buffer);
-
-   return buffer;
-#endif
+      for(MapEncoders::const_iterator i = mMapEncoders.begin(); i != mMapEncoders.end(); ++i)
+      {
+         if((*i)->AcceptsSceneExtension(extension))
+         {
+            return *i;
+         }
+      }
+      return NULL;
    }
 }

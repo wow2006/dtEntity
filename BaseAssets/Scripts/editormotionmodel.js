@@ -2,78 +2,92 @@ include_once("Scripts/osgveclib.js");
 include_once("Scripts/stdlib.js");
 
 
-
 ////////////////////////////////////////////////////////////////////////////////
 function EditorMotionComponent(eid) {
 
-  this.Projection = "3d";
-  this.Enabled = true;
-  this.movespeed = 100;
-  this.rotatespeed = 0.001;
-  this.rotatekeysspeed = 2;
-  this.TestText = "abc";
+  var camera = null;
+
+  createInt32Prop(this, "contextId", 0);
+  createUint32Prop(this, "movespeed", 100);
+  createNumberProp(this, "rotatespeed", 0.001);
+  createNumberProp(this, "rotatekeysspeed", 2);
+  createBoolProp(this, "Enabled", true);
+
+  createVec2Prop(this, "test2", [1,2]);
+  createVec3Prop(this, "test3", [1,2,3]);
+  createVec4Prop(this, "test4", [1,2,3,4]);
+  createQuatProp(this, "testq", [1,2,3,4]);
+
+  createStringProp(this, "Projection", "3d",
+         function() { return this.value; },
+         function(val) {
+           this.value = val;
+
+           if(camera === null) return;
+
+           if(val === "3d") {
+             if(camera.ProjectionMode !== "ModePerspective") {
+                camera.ProjectionMode = "ModePerspective";
+                camera.EyeDirection = last3dEyeDirection;
+                camera.Up = [0,0,1];
+             }
+           }
+           else
+           {
+              if(camera.ProjectionMode === "ModePerspective") {
+                 last3dEyeDirection = camera.EyeDirection;
+              }
+              camera.ProjectionMode = "ModeOrtho";
+              if(val === "x") {
+                 camera.EyeDirection = [-1,0,0];
+                 camera.Up = [0, 0, 1];
+              }
+              else if(val === "y") {
+                 camera.EyeDirection = [0, -1,0];
+                 camera.Up = [0, 0, 1];
+              }
+              else if(val === "z") {
+                 camera.EyeDirection = [0, 0, -1];
+                 camera.Up = [0, 1, 0];
+              }
+
+              camera.OrthoLeft = -zoom;
+              camera.OrthoRight = zoom;
+              camera.OrthoTop = zoom;
+              camera.OrthoBottom = -zoom;
+           }
+           camera.finished();
+        }
+   );
 
   var rotateOp = [0, 0, 0, 1];
   var toRight = [0,0,0];
   var tempvec = [0,0,0];
   var zoom = 100;
+  
   var pivot = [0,0,0];
+
   var last3dEyeDirection = [0,1,0];
 
   var self = this;
-  var camera = null;
-  this.contextId = 0;
+
 
   this.finished = function() {
      camera = getEntitySystem("Camera").getComponent(eid);
      if(camera) {
-        this.contextId = camera.ContextId;
+       this.contextId = camera.ContextId;
+       this.Projection = "3d";
      }
    }
 
-  this.onPropertyChanged = function(propname) {
-      if(propname == "Projection") {
-
-         if(this.Projection == "3d") {
-            camera.ProjectionMode = "ModePerspective";
-            camera.EyeDirection = last3dEyeDirection;
-            camera.Up = [0,0,1];
-         }
-         else
-         {
-            if(camera.ProjectionMode == "ModePerspective") {
-               last3dEyeDirection = camera.EyeDirection;
-            }
-            camera.ProjectionMode = "ModeOrtho";
-            if(this.Projection == "x") {
-               camera.EyeDirection = [-1,0,0];
-               camera.Up = [0, 0, 1];
-            }
-            else if(this.Projection == "y") {
-               camera.EyeDirection = [0, -1,0];
-               camera.Up = [0, 0, 1];
-            }
-            else if(this.Projection == "z") {
-               camera.EyeDirection = [0, 0, -1];
-               camera.Up = [0, 1, 0];
-            }
-
-            camera.OrthoLeft = -zoom;
-            camera.OrthoRight = zoom;
-            camera.OrthoTop = zoom;
-            camera.OrthoBottom = -zoom;
-         }
-         camera.finished();
-      }
-  }
 
 
-  this.destruct = function() {
-  }
+
+  this.destruct = function() {}
 
    this.keyDown = function(key, handled, cid) {
 
-      if(!handled && this.Enabled && cid == this.contextId) {
+       if(!handled && this.Enabled && cid === this.contextId) {
 
          switch(key) {
             case "1": self.movespeed = 5; break;
@@ -94,7 +108,7 @@ function EditorMotionComponent(eid) {
 
    this.mouseButtonDown = function(button, handled, cid) {
       if(handled) return;
-      if(!this.Enabled || cid != this.contextId) return;
+      if(!this.Enabled || cid !== this.contextId) return;
       if(button === 1) {
          Screen.lockCursor = true;
          return true;
@@ -102,22 +116,22 @@ function EditorMotionComponent(eid) {
          Screen.lockCursor = true;
          var mouseX = Input.getAxis(Axis.MouseXRaw);
          var mouseY = Input.getAxis(Axis.MouseYRaw);
-         var pick = Screen.pickEntity(mouseX, mouseY);
-
-         if (pick === null) {
-
-            pivot = osg.Vec3.add(camera.Position,
-                                 osg.Vec3.mult(Screen.getPickRay(Input.getAxis(Axis.MouseX),
-                                                                 Input.getAxis(Axis.MouseY)), 100));
+         var pickray = Screen.getPickRay(Input.getAxis(Axis.MouseX), Input.getAxis(Axis.MouseY));
+                                                                 
+         var isects = Screen.intersect(camera.Position, osg.Vec3.add(camera.Position, osg.Vec3.mult(pickray, 10000)));
+         if (isects.length === 0) {
+            pivot = osg.Vec3.add(camera.Position, osg.Vec3.mult(pickray, 100));
+                                                               
          } else {
-            pivot = pick.Position;
+           pivot = isects[0].Position;
          }
+
          return true;
       }
    }
 
    this.mouseButtonUp = function(button, handled, cid) {
-      if(!this.Enabled || cid != this.contextId) return;
+      if(!this.Enabled || cid !== this.contextId) return;
       if(button === 1 || button === 2) {
          Screen.lockCursor = false;
          return true;
@@ -126,9 +140,9 @@ function EditorMotionComponent(eid) {
 
    this.mouseWheel = function(dir, handled, cid) {
       if(!this.Enabled) return;
-      if(!handled && camera !== null && cid == this.contextId) {
+      if(!handled && camera !== null && cid === this.contextId) {
 
-         if(self.Projection == "3d") {
+        if(self.Projection === "3d") {
             var pos = camera.Position;
             var eyedir = camera.EyeDirection;
             osg.Vec3.mult(eyedir, dir * 20, tempvec);
@@ -154,9 +168,9 @@ function EditorMotionComponent(eid) {
    }
 
    this.mouseMove = function(x, y, handled, cid) {
-
       if(handled) return;
-      if(camera === null || !this.Enabled || this.contextId != cid) return;
+
+      if(camera === null || !this.Enabled || this.contextId !== cid) return;
 
       var pos = camera.Position;
       var up = camera.Up;
@@ -167,7 +181,7 @@ function EditorMotionComponent(eid) {
 
       if(Input.getMouseButton(1, this.contextId)) {
 
-         if(self.Projection == "3d") {
+        if(self.Projection === "3d") {
 
             osg.Quat.makeRotate(-mouseX * self.rotatespeed, up[0], up[1], up[2], rotateOp);
             osg.Quat.rotate(rotateOp, eyedir, eyedir);
@@ -178,14 +192,15 @@ function EditorMotionComponent(eid) {
             camera.EyeDirection = eyedir;
             osg.Vec3.cross(eyedir, up, toRight);
             camera.Up = [0, 0, 1];
-
             camera.finished();
+
          }
          return true;
 
       } else if(Input.getMouseButton(2, this.contextId)) {
 
-         if(self.Projection == "3d") {
+        if(self.Projection === "3d") {
+
             var pivotToCam = osg.Vec3.sub(pos, pivot);
             osg.Quat.makeRotate(mouseX * -0.001, up[0], up[1], up[2], rotateOp);
             osg.Quat.rotate(rotateOp, pivotToCam, pivotToCam);
@@ -345,110 +360,60 @@ function EditorMotionComponent(eid) {
     camera.Up = up;
     camera.finished();
 
-    println("Pos: " + camera.Position + " up: " + camera.Up + " dir: " + camera.EyeDirection);
-
   }
 }
 
-////////////////////////////////////////////////////////////////////////////////
-function EditorMotionSystem() {
 
-  var self = this;
-  // -----------------------------------------
-  var components = [];
 
-  this.componentType = "EditorMotion";
+var editorMotionSystem = new JSEntitySystem(EditorMotionComponent, "EditorMotion");
 
-  setInterval(function() {
-    for(k in components) {
-      components[k].update();
-    }
-  }, 0);
-
-  // -----------------------------------------
-  this.hasComponent = function(eid) {
-
-    return (components[eid]) ? true : false;
-  };
-
-  // -----------------------------------------
-  this.getComponent = function(eid) {
-    return components[eid];
-  }
-
-  // ----------------------------
-  this.createComponent = function(eid) {
-    if(self.hasComponent(eid)) {
-      Log.error("EditorMotion component with id " + eid + " already exists!");
-      return self.getComponent(eid);
-    }
-
-    var c = new EditorMotionComponent(eid);
-    components[eid] = c;
-
-    Input.addInputCallback(c);
-    c.finished();
-    return c;
-  }
-
-  // -----------------------------------------
-  this.deleteComponent = function(eid) {
-    if(self.hasComponent(eid)) {
-      var comp = components[eid];
-      comp.destruct();
-      Input.removeInputCallback(comp);
-      delete components[eid];
+// -----------------------------------------
+editorMotionSystem.getComponentByContextId = function(contextid)  {
+  var component = null;
+  for(k in editorMotionSystem.components) {
+    if(editorMotionSystem.components[k].contextId === contextid) {
+      return editorMotionSystem.components[k];
     }
   }
+  return null;
+}
 
-  // -----------------------------------------
-  this.getEntitiesInSystem = function() {
-    var arr = [];
-    for(var key in components) {
-       arr.push(parseInt(key));
-    }
-    return arr;
+// don't store motion component to map, should be created by script at load time
+editorMotionSystem.storeComponentToMap = function() { return false; }
+editorMotionSystem.storePropertiesToScene = function() { return false; }
+
+setInterval(function() {
+  for(k in editorMotionSystem.components) {
+    editorMotionSystem.components[k].update();
   }
+}, 0);
 
-  // -----------------------------------------
-  this.onPropertyChanged = function(propname) {
+// -----------------------------------------
+function doJumpToEntity(name, params) {
+  var context = params.ContextId;
+  var component = editorMotionSystem.getComponentByContextId(context);
+  if(component !== null) {
+    component.jumpToEntity(params.AboutEntity, params.Distance, params.KeepCameraDirection);
   }
+}
+EntityManager.registerForMessages("MoveCameraToEntityMessage", doJumpToEntity);
 
-  // -----------------------------------------
-  this.getComponentByContextId = function(contextid)  {
-    var component = null;
-    for(k in components) {
-      if(components[k].contextId == contextid) {
-        return components[k];
-      }
-    }
-    return null;
+// -----------------------------------------
+function doJumpToPosition(name, params) {
+  var context = params.ContextId;
+  var component = editorMotionSystem.getComponentByContextId(context);
+  if(component !== null) {
+    component.jumpToPosition(params.Position, params.LookAt, params.Up);
   }
+}
+EntityManager.registerForMessages("MoveCameraToPositionMessage", doJumpToPosition);
 
-  // don't store motion component to map, should be created by script at load time
-  this.storeComponentToMap = function() { return false; }
-  this.storePropertiesToScene = function() { return false; }
+editorMotionSystem.created = function(id, component) {
+      println("Adding input callback");
+  Input.addInputCallback(component);
+}
 
-  // -----------------------------------------
-  function doJumpToEntity(name, params) {
-    var context = params.ContextId;
-    var component = self.getComponentByContextId(context);
-    if(component !== null) {
-      component.jumpToEntity(params.AboutEntity, params.Distance, params.KeepCameraDirection);
-    }
-  }
-  EntityManager.registerForMessages("MoveCameraToEntityMessage", doJumpToEntity);
-
-  // -----------------------------------------
-  function doJumpToPosition(name, params) {
-    var context = params.ContextId;
-    var component = self.getComponentByContextId(context);
-    if(component !== null) {
-      component.jumpToPosition(params.Position, params.LookAt, params.Up);
-    }
-  }
-  EntityManager.registerForMessages("MoveCameraToPositionMessage", doJumpToPosition);
-
-};
-
-EntityManager.addEntitySystem(new EditorMotionSystem());
+editorMotionSystem.destroyed = function(id, component) {
+  Input.removeInputCallback(component);
+}
+EntityManager.addEntitySystem(editorMotionSystem);

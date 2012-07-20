@@ -20,15 +20,15 @@
 * Martin Scheffler
 */
 
-#include <osg/Referenced>
 #include <dtEntity/propertycontainer.h>
+#include <dtEntity/property.h>
 #include <dtEntity/entityid.h>
 #include <dtEntity/stringid.h>
-#include <dtEntity/component.h>
 #include <list>
 
 namespace dtEntity
 {
+   class Component;
    class EntityManager;
 
 
@@ -63,8 +63,7 @@ namespace dtEntity
       /**
        * @return The type id of the component that this system handles
        */
-      virtual ComponentType GetComponentType() const { return StringId(); }
-
+      virtual ComponentType GetComponentType() const = 0;
       /**
        * @return If component class is derived from a base component type, give base
        *         type here
@@ -114,7 +113,7 @@ namespace dtEntity
        * Get property names and default property values of component. Used
        * for spawner creation
        */
-      virtual DynamicPropertyContainer GetComponentProperties() const { return DynamicPropertyContainer(); }
+      virtual GroupProperty GetComponentProperties() const { return GroupProperty(); }
 
 	  /**
 	   * @return entity manager that the entity system was added to

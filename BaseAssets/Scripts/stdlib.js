@@ -118,15 +118,21 @@ function createEntity(proto) {
       continue;
     }
     var component = entitySystem.createComponent(entityId);
+    comps.push([properties, component]);
+
+  }
+  
+  for(var k in comps) {
+  
+    var properties = comps[k][0];
+    var component = comps[k][1];
     for(var prop in properties) {
       component[prop] = properties[prop];
     }
-    comps.push(component);
-
   }
 
-  for(k in comps) {
-     comps[k].finished();
+  for(var k in comps) {
+     comps[k][1].finished();
   }
 
   return entityId;
@@ -281,4 +287,146 @@ function makeMatrix(p1,p2,p3,p4,p5,p6,p7,p8,p9,p10,p11,p12,p13,p14,p15,p16) {
    var ret = [[p1,p2,p3,p4],[p5,p6,p7,p8],[p9,p10,p11,p12],[p13,p14,p15,p16]];
    ret.__TYPE_HINT = "MT";
    return ret;
+}
+
+function __createProp(obj, propname, val, getter, setter, createfun) {
+
+  if(typeof getter === 'undefined') {
+    getter = function() { return this.value; };
+  }
+  if(typeof setter === 'undefined') {
+    setter = function(v) { this.value = v; };
+  }
+  createfun(obj, propname, getter, setter);
+
+  // call the setter
+  if(typeof val !== 'undefined') {
+    obj[propname] = val;
+  }
+}
+
+
+function createBoolProp(obj, propname, val, getter, setter) {
+  __createProp(obj, propname, val, getter, setter, __createBoolProp);
+}
+
+function createInt32Prop(obj, propname, val, getter, setter) {
+  __createProp(obj, propname, val, getter, setter, __createInt32Prop);
+}
+
+function createUint32Prop(obj, propname, val, getter, setter) {
+  __createProp(obj, propname, val, getter, setter, __createUint32Prop);
+}
+
+function createStringProp(obj, propname, val, getter, setter) {
+  __createProp(obj, propname, val, getter, setter, __createStringProp);
+}
+
+function createNumberProp(obj, propname, val, getter, setter) {
+  __createProp(obj, propname, val, getter, setter, __createNumberProp);
+}
+
+function createQuatProp(obj, propname, val, getter, setter) {
+  __createProp(obj, propname, val, getter, setter, __createQuatProp);
+}
+
+function createVec2Prop(obj, propname, val, getter, setter) {
+  __createProp(obj, propname, val, getter, setter, __createVec2Prop);
+}
+
+function createVec3Prop(obj, propname, val, getter, setter) {
+  __createProp(obj, propname, val, getter, setter, __createVec3Prop);
+}
+
+function createVec4Prop(obj, propname, val, getter, setter) {
+  __createProp(obj, propname, val, getter, setter, __createVec4Prop);
+}
+
+
+function __createPropertyStruct(createFun, value, getter, setter) {
+
+  if(typeof getter === 'undefined') {
+    getter = function() { return this.value; }
+  }
+  if(typeof setter === 'undefined') {
+    setter = function() {
+      for(var i = 0; i < arguments.length; ++i) {
+        this.value[i] = arguments[i];
+      }
+    }
+  }
+
+  var p = createFun(getter, setter);
+  if(typeof value === 'undefined') {
+    p.value = [];
+  } else {
+    p.value = value;
+  }
+  return p;
+
+}
+
+function quatProp(value, getter, setter) {
+  return __createPropertyStruct(__createPropertyQuat, value, getter, setter);
+}
+
+function vec2Prop(value, getter, setter) {
+  return __createPropertyStruct(__createPropertyVec2, value, getter, setter);
+}
+
+
+function vec3Prop(value, getter, setter) {
+  return __createPropertyStruct(__createPropertyVec3, value, getter, setter);
+}
+
+
+function vec4Prop(value, getter, setter) {
+  return __createPropertyStruct(__createPropertyVec4, value, getter, setter);
+}
+
+
+
+////////////////////////////////////////////////////////////////////////////////
+function JSEntitySystem(componentCreateFun, componentType) {
+
+  this.components = [];
+
+  this.componentType = componentType;
+  this.ComponentCreateFun = componentCreateFun;
+  this.created = function() {}
+  this.destroyed = function() {}
+
+  this.hasComponent = function (eid) {
+      return (eid in this.components);
+  };
+
+  this.getComponent = function (eid) {
+    return this.components[eid];
+  }
+
+  this.createComponent = function (eid) {
+    if(this.hasComponent(eid)) {
+      Log.error("component with id " + eid + " already exists!");
+      return null;
+    }
+    var c = new this.ComponentCreateFun(eid);
+    this.components[eid] = c;
+    this.created(eid, c);
+    return c;
+  }
+
+  this.deleteComponent = function (eid) {
+    var c = this.components[eid];
+    this.destroyed(eid, c);
+    delete this.components[eid];
+  }
+
+
+  this.getEntitiesInSystem = function () {
+    var arr = [];
+    for(var key in this.components) {
+       arr.push(parseInt(key));
+    }
+    return arr;
+  }
 }

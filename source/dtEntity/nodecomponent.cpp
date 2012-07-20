@@ -22,6 +22,8 @@
 #include <dtEntity/groupcomponent.h>
 #include <dtEntity/layercomponent.h>
 #include <dtEntity/nodemaskvisitor.h>
+#include <osg/NodeVisitor>
+#include <osg/Group>
 
 namespace dtEntity
 {

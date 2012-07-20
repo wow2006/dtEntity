@@ -41,7 +41,7 @@ namespace dtEntity
    /**
     * Adds all messages to message factory
    */
-   void RegisterSystemMessages(MessageFactory&);
+   void DT_ENTITY_EXPORT RegisterSystemMessages(MessageFactory&);
 
    ////////////////////////////////////////////////////////////////////////////////
    /**
@@ -446,6 +446,36 @@ namespace dtEntity
 
       StringIdProperty mComponentType;
       StringProperty mComponentTypeString;
+   };
+
+   ////////////////////////////////////////////////////////////////////////////////
+   /**
+    * Is sent when name or unique id of entity is changed
+    */
+   class DT_ENTITY_EXPORT EntityVelocityNotNullMessage
+      : public Message
+   {
+   public:
+
+      static const MessageType TYPE;
+      static const StringId AboutEntityId;
+      static const StringId IsNullId;
+
+      EntityVelocityNotNullMessage();
+
+      // Create a copy of this message on the heap
+      virtual Message* Clone() const { return CloneContainer<EntityVelocityNotNullMessage>(); }
+
+      void SetAboutEntityId(EntityId id) { mAboutEntity.Set(id); }
+      EntityId GetAboutEntityId() const { return mAboutEntity.Get(); }
+
+      void SetIsNull(bool v) { mIsNull.Set(v); }
+      bool GetIsNull() const { return mIsNull.Get(); }
+
+   private:
+
+      UIntProperty mAboutEntity;
+      BoolProperty mIsNull;
    };
 
    ////////////////////////////////////////////////////////////////////////////////

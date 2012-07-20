@@ -63,6 +63,21 @@ namespace dtEntityWrappers
    }
 
    ////////////////////////////////////////////////////////////////////////////////
+   Handle<Value> MSAddToScene(const Arguments& args)
+   {
+      dtEntity::MapSystem* ms = UnwrapMapSystem(args.This());
+      bool success = ms->AddToScene(args[0]->Uint32Value());
+      if(success)
+      {
+         return Undefined();
+      }
+      else
+      {
+         return ThrowError("Could not add to scene: " + ToStdString(args[0]));
+      }
+   }
+
+   ////////////////////////////////////////////////////////////////////////////////
    Handle<Value> MSGetEntityIdByUniqueId(const Arguments& args)
    {
       dtEntity::MapSystem* ms = UnwrapMapSystem(args.This());
@@ -98,6 +113,21 @@ namespace dtEntityWrappers
       else
       {
          return ThrowError("Could not load scene " + ToStdString(args[0]));
+      }
+   }
+
+   ////////////////////////////////////////////////////////////////////////////////
+   Handle<Value> MSRemoveFromScene(const Arguments& args)
+   {
+      dtEntity::MapSystem* ms = UnwrapMapSystem(args.This());
+      bool success = ms->RemoveFromScene(args[0]->Uint32Value());
+      if(success)
+      {
+         return Undefined();
+      }
+      else
+      {
+         return ThrowError("Could not remove from scene: " + ToStdString(args[0]));
       }
    }
 
@@ -248,15 +278,14 @@ namespace dtEntityWrappers
                Handle<Object> compobj = Handle<Object>::Cast(val);
                Handle<Array> compkeys = compobj->GetPropertyNames();
 
-               dtEntity::DynamicPropertyContainer props;  
+               dtEntity::GroupProperty props;
                for(unsigned int j = 0; j < compkeys->Length(); ++j)
                {
                   Handle<Value> compkey = compkeys->Get(Integer::New(j));
                   std::string compkeystr = ToStdString(compkey);
                   Handle<Value> compval = compobj->Get(compkey);
                   dtEntity::Property* prop = ConvertValueToProperty(compval);
-                  props.AddProperty(dtEntity::SIDHash(compkeystr), *prop);
-                  delete prop;
+                  props.Add(dtEntity::SIDHash(compkeystr), prop);
                }
                spawner->AddComponent(ctype, props);
             }
@@ -312,15 +341,14 @@ namespace dtEntityWrappers
          std::string compname = dtEntity::GetStringFromSID(i->first);
          Handle<Object> jscomp = Object::New();
 
-         const dtEntity::DynamicPropertyContainer props = i->second;
-         dtEntity::PropertyContainer::ConstPropertyMap propmap;
-         props.GetProperties(propmap);
-         dtEntity::PropertyContainer::ConstPropertyMap::const_iterator j;
-         for(j = propmap.begin(); j != propmap.end(); ++j)
+         const dtEntity::GroupProperty props = i->second;
+         dtEntity::PropertyGroup g = props.Get();
+
+         for(dtEntity::PropertyGroup::const_iterator j = g.begin(); j != g.end(); ++j)
          {
             std::string propname = dtEntity::GetStringFromSID(j->first);
             const dtEntity::Property* prop = j->second;
-            jscomp->Set(ToJSString(propname), ConvertPropertyToValue(args.Holder()->CreationContext(), prop));
+            jscomp->Set(ToJSString(propname), ConvertPropertyToValue(args.This()->CreationContext(), prop));
          }
          
          comps->Set(ToJSString(compname), jscomp);
@@ -392,7 +420,7 @@ namespace dtEntityWrappers
    {  
       Handle<External> ext = Handle<External>::Cast(args[0]);
       dtEntity::MapSystem* ls = static_cast<dtEntity::MapSystem*>(ext->Value());   
-      args.Holder()->SetInternalField(0, External::New(ls));
+      args.This()->SetInternalField(0, External::New(ls));
     
       return Undefined();
    }
@@ -422,11 +450,13 @@ namespace dtEntityWrappers
       proto->Set("spawn", FunctionTemplate::New(MSSpawn));
       proto->Set("deleteEntitiesByMap", FunctionTemplate::New(MSDeleteEntitiesByMap));
       proto->Set("addSpawner", FunctionTemplate::New(MSAddSpawner));
+      proto->Set("addToScene", FunctionTemplate::New(MSAddToScene));
       proto->Set("deleteSpawner", FunctionTemplate::New(MSDeleteSpawner));
       proto->Set("getSpawner", FunctionTemplate::New(MSGetSpawner));
       proto->Set("getSpawnerCreatedEntities", FunctionTemplate::New(MSGetSpawnerCreatedEntities));
       proto->Set("getAllSpawnerNames", FunctionTemplate::New(MSGetAllSpawnerNames));
       proto->Set("getEntitiesInMap", FunctionTemplate::New(MSGetEntitiesInMap));
+      proto->Set("removeFromScene", FunctionTemplate::New(MSRemoveFromScene));
       
       RegisterEntitySystempWrapper(ss, dtEntity::MapComponent::TYPE, templt);
    }

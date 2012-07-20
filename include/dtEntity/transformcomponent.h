@@ -24,11 +24,9 @@
 #include <dtEntity/export.h>
 #include <dtEntity/defaultentitysystem.h>
 #include <dtEntity/component.h>
-#include <dtEntity/dynamicproperty.h>
 #include <dtEntity/groupcomponent.h>
 #include <dtEntity/property.h>
 #include <dtEntity/stringid.h>
-#include <osg/Group>
 
 namespace dtEntity
 {
@@ -46,7 +44,6 @@ namespace dtEntity
 
       static const ComponentType TYPE;
 
-      TransformComponent();
       TransformComponent(osg::Transform* trans);
 
       virtual ~TransformComponent();
@@ -56,24 +53,24 @@ namespace dtEntity
       }
 
 
-      virtual osg::Vec3d GetTranslation() const = 0;
-      virtual void SetTranslation(const osg::Vec3d&) = 0;
+      virtual Vec3d GetTranslation() const = 0;
+      virtual void SetTranslation(const Vec3d&) = 0;
 
-      virtual osg::Vec3d GetScale() const { return osg::Vec3d(1,1,1); }
-      virtual void SetScale(const osg::Vec3d&) {}
+      virtual Vec3d GetScale() const { return Vec3d(1,1,1); }
+      virtual void SetScale(const Vec3d&) {}
 
-      virtual osg::Quat GetRotation() const = 0;
-      virtual void SetRotation(const osg::Quat&) = 0;
+      virtual Quat GetRotation() const = 0;
+      virtual void SetRotation(const Quat&) = 0;
 
-      virtual osg::Matrix GetMatrix() const
+      virtual Matrix GetMatrix() const
       {
-         osg::Matrix matrix;
+         Matrix matrix;
          matrix.setTrans(GetTranslation());
          matrix.setRotate(GetRotation());
          return matrix;
       }
 
-      virtual void SetMatrix(const osg::Matrix& mat)
+      virtual void SetMatrix(const Matrix& mat)
       {
          SetTranslation(mat.getTrans());
          SetRotation(mat.getRotate());

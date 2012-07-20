@@ -120,12 +120,6 @@ namespace dtEntity
       BaseClass::OnAddedToEntity(entity);
    }
 
-
-   ////////////////////////////////////////////////////////////////////////////
-   void ShaderComponent::Finished()
-   { 
-   }
-
    ////////////////////////////////////////////////////////////////////////////
    const StringId ShaderSystem::TYPE(dtEntity::SID("Shader"));
 
@@ -142,8 +136,9 @@ namespace dtEntity
    }
 
    ////////////////////////////////////////////////////////////////////////////
-   void ShaderSystem::OnPropertyChanged(StringId propname, Property &prop)
+   ShaderSystem::~ShaderSystem()
    {
+      GetEntityManager().UnregisterForMessages(MeshChangedMessage::TYPE, mChangedMeshFunctor);
    }
 
    ////////////////////////////////////////////////////////////////////////////
@@ -255,7 +250,7 @@ namespace dtEntity
 
       osg::ref_ptr<osg::Uniform> uniform = NULL;
       const dtEntity::Property* prop = args[2];
-      switch(prop->GetType())
+      switch(prop->GetDataType())
       {
       case DataType::BOOL: uniform = new osg::Uniform(name, prop->BoolValue()); break;
       case DataType::DOUBLE:
@@ -267,7 +262,7 @@ namespace dtEntity
       case DataType::VEC4D: uniform = new osg::Uniform(name, prop->Vec4dValue()); break;
       default:
          {
-         LOG_ERROR("Unhandled uniform input value: " << prop->GetType());
+         LOG_ERROR("Unhandled uniform input value: " << prop->GetDataType());
          }
       }
 

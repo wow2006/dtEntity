@@ -5,6 +5,8 @@ ADD_DEFINITIONS(-DNOMINMAX)
 ENDIF (WIN32)
 
 FIND_PACKAGE(OpenThreads REQUIRED)
+FIND_PACKAGE(ProtoBuf)
+FIND_PACKAGE(ENet)
 
 OPTION(DTENTITY_USE_STRINGS_AS_STRINGIDS "Use std::string instead of hashed strings (for debugging)" OFF)
 
@@ -17,10 +19,7 @@ IF(BUILD_OPENAL)
   )
 ENDIF(BUILD_OPENAL)
 
-IF(BUILD_CEGUI)
-   FIND_PACKAGE(CEGUI REQUIRED)
-   INCLUDE_DIRECTORIES(${CEGUI_INCLUDE_DIR})
-ENDIF(BUILD_CEGUI)
+
 
 OPTION(USE_BOOST_POOL "Use boost pool to store components" OFF)
 IF(USE_BOOST_POOL)
@@ -47,16 +46,17 @@ configure_file (
 
 SET(LIB_PUBLIC_HEADERS
   ${HEADER_PATH}/applicationcomponent.h
-  ${HEADER_PATH}/basemessages.h
   ${HEADER_PATH}/cameracomponent.h
   ${HEADER_PATH}/commandmessages.h
   ${HEADER_PATH}/component.h
   ${HEADER_PATH}/componentfactories.h
   ${HEADER_PATH}/componentplugin.h
   ${HEADER_PATH}/componentpluginmanager.h
-  ${HEADER_PATH}/crc32.h
+  ${HEADER_PATH}/core.h
+  ${HEADER_PATH}/hash.h
   ${HEADER_PATH}/debugdrawmanager.h
   ${HEADER_PATH}/defaultentitysystem.h
+  ${HEADER_PATH}/dynamicscomponent.h
   ${HEADER_PATH}/dynamicproperty.h
   ${HEADER_PATH}/entity.h
   ${HEADER_PATH}/entityid.h
@@ -83,8 +83,8 @@ SET(LIB_PUBLIC_HEADERS
   ${HEADER_PATH}/nodemasks.h
   ${HEADER_PATH}/nodemaskvisitor.h
   ${HEADER_PATH}/objectfactory.h
-  ${HEADER_PATH}/osganimationcomponent.h  
-  ${HEADER_PATH}/policycomponent.h
+  ${HEADER_PATH}/osganimationcomponent.h
+  ${HEADER_PATH}/osgsysteminterface.h
   ${HEADER_PATH}/positionattitudetransformcomponent.h
   ${HEADER_PATH}/pickshapecomponent.h
   ${HEADER_PATH}/profile.h
@@ -100,11 +100,13 @@ SET(LIB_PUBLIC_HEADERS
   ${HEADER_PATH}/skyboxcomponent.h
   ${HEADER_PATH}/staticmeshcomponent.h
   ${HEADER_PATH}/stringid.h
+  ${HEADER_PATH}/systeminterface.h
   ${HEADER_PATH}/systemmessages.h
   ${HEADER_PATH}/textlabelcomponent.h
   ${HEADER_PATH}/texturelabelcomponent.h
   ${HEADER_PATH}/threadsafequeue.h
   ${HEADER_PATH}/transformcomponent.h
+  ${HEADER_PATH}/uniqueid.h
   ${HEADER_PATH}/windowmanager.h
   ${DTENTITY_CONFIG_HEADER}
 
@@ -114,6 +116,8 @@ SET(LIB_REPLACE
   applicationcomponent.cpp
   cameracomponent.cpp
   commandmessages.cpp
+  core.cpp
+  dynamicscomponent.cpp
   groupcomponent.cpp
   inputhandler.cpp
   layerattachpointcomponent.cpp
@@ -123,9 +127,9 @@ SET(LIB_REPLACE
   matrixtransformcomponent.cpp
   nodecomponent.cpp
   osganimationcomponent.cpp
+  osgsysteminterface.cpp
   pickshapecomponent.cpp
   positionattitudetransformcomponent.cpp
-  resourcemanager.cpp
   shadercomponent.cpp
   shadowcomponent.cpp
   staticmeshcomponent.cpp
@@ -139,10 +143,11 @@ SET(LIB_REPLACE
 SET(LIB_SOURCES
   componentfactories.cpp
   componentpluginmanager.cpp
-  crc32.cpp
   debugdrawmanager.cpp
+  dynamicscomponent.cpp
   entity.cpp
   entitymanager.cpp
+  hash.cpp
   initosgviewer.cpp
   logmanager.cpp
   messagefactory.cpp
@@ -151,9 +156,11 @@ SET(LIB_SOURCES
   property.cpp
   propertycontainer.cpp
   rapidxmlmapencoder.cpp
+  resourcemanager.cpp
   scriptaccessor.cpp
   spawner.cpp
   stringid.cpp
+  uniqueid.cpp
   windowmanager.cpp
 
 )
@@ -161,6 +168,18 @@ SET(LIB_SOURCES
 SET(DTENTITYLIBS      ${OPENSCENEGRAPH_LIBRARIES}
                       ${OPENTHREADS_LIBRARIES}
 )
+
+
+IF(PROTOBUF_FOUND)
+  INCLUDE_DIRECTORIES(${PROTOBUF_INCLUDE_DIR})
+  INCLUDE_DIRECTORIES(${CMAKE_CURRENT_SOURCE_DIR}/gen)
+  LIST(APPEND LIB_PUBLIC_HEADERS ${HEADER_PATH}/protobufmapencoder.h
+                  gen/data.pb.h)
+  LIST(APPEND LIB_SOURCES		protobufmapencoder.cpp
+                gen/data.pb.cc)
+  LIST(APPEND DTENTITYLIBS   ${PROTOBUF_LIBRARIES})
+ENDIF(PROTOBUF_FOUND)
+
 
 IF(BUILD_OPENAL)
    LIST(APPEND LIB_PUBLIC_HEADERS ${HEADER_PATH}/audiomanager.h)
@@ -178,22 +197,7 @@ IF(BUILD_OPENAL)
    INCLUDE_DIRECTORIES( ${OPENAL_INCLUDE_DIR})
 ENDIF(BUILD_OPENAL)
 
-IF(BUILD_CEGUI)
-   LIST(APPEND DTENTITYLIBS ${CEGUI_LIBRARIES})
-   LIST(APPEND DTENTITYLIBS ${CEGUI_OPENGLRENDERER_LIBRARIES})
-   LIST(APPEND LIB_PUBLIC_HEADERS
-      ${HEADER_PATH}/gui.h
-      ${HEADER_PATH}/resourceprovider.h
-      ${HEADER_PATH}/scriptmodule.h
 
-  )
-   LIST(APPEND LIB_SOURCES
-      ${SOURCE_PATH}/gui.cpp
-      ${SOURCE_PATH}/resourceprovider.cpp
-      scriptmodule.cpp
-)
-
-ENDIF(BUILD_CEGUI)
 
 REPLACE_SIDS_IN_SOURCE(LIB_SOURCES_OUT ${LIB_REPLACE})
 

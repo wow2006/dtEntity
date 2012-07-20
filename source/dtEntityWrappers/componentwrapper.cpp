@@ -23,7 +23,7 @@
 
 #include <dtEntityWrappers/propertyconverter.h>
 #include <dtEntity/component.h>
-
+#include <dtEntity/dtentity_config.h>
 #include <dtEntityWrappers/scriptcomponent.h>
 #include <dtEntityWrappers/v8helpers.h>
 #include <dtEntityWrappers/wrappers.h>
@@ -36,8 +36,7 @@ using namespace v8;
 
 namespace dtEntityWrappers
 {
-
-   Persistent<FunctionTemplate> s_componentTemplate;
+   dtEntity::StringId s_componentWrapper = dtEntity::SID("ComponenttmWrapper");
 
    ////////////////////////////////////////////////////////////////////////////////
    Handle<Value> COPropertyGetter(Local<String> propname, const AccessorInfo& info)
@@ -53,7 +52,7 @@ namespace dtEntityWrappers
       Handle<External> ext = Handle<External>::Cast(info.Data());
       dtEntity::Property* prop = static_cast<dtEntity::Property*>(ext->Value());
 
-      switch(prop->GetType())
+      switch(prop->GetDataType())
       {
       case dtEntity::DataType::ARRAY:
       case dtEntity::DataType::VEC2:
@@ -66,11 +65,11 @@ namespace dtEntityWrappers
       case dtEntity::DataType::MATRIX:
       case dtEntity::DataType::QUAT:
       {
-         Handle<Value> v = info.Holder()->GetHiddenValue(propname);
-         if(v.IsEmpty())
+         Handle<Value> v;// = info.Holder()->GetHiddenValue(propname);
+         if(true)//v.IsEmpty())
          {
             v = ConvertPropertyToValue(info.Holder()->CreationContext(), prop);
-            info.Holder()->SetHiddenValue(propname, v);
+           // info.Holder()->SetHiddenValue(propname, v);
          }
          else
          {
@@ -105,7 +104,9 @@ namespace dtEntityWrappers
       dtEntity::Property* prop = static_cast<dtEntity::Property*>(ext->Value());
       assert(prop);
       SetPropertyFromValue(value, prop);
+#if CALL_ONPROPERTYCHANGED_METHOD
       component->OnPropertyChanged(dtEntity::SIDHash(ToStdString(propname)), *prop);
+#endif
    }
 
    ////////////////////////////////////////////////////////////////////////////////
@@ -117,7 +118,7 @@ namespace dtEntityWrappers
    ////////////////////////////////////////////////////////////////////////////////
    Handle<Value> COGetType(const Arguments& args)
    {
-      dtEntity::Component* component = UnwrapComponent(args.Holder());
+      dtEntity::Component* component = UnwrapComponent(args.This());
       if(component == NULL)
       {
          return ThrowError("Accessing a deleted component!");
@@ -128,7 +129,7 @@ namespace dtEntityWrappers
    ////////////////////////////////////////////////////////////////////////////////
    Handle<Value> COProperties(const Arguments& args)
    {
-      dtEntity::Component* component = UnwrapComponent(args.Holder());
+      dtEntity::Component* component = UnwrapComponent(args.This());
       if(component == NULL)
       {
          return ThrowError("Accessing a deleted component!");
@@ -137,14 +138,14 @@ namespace dtEntityWrappers
       HandleScope scope;
       Handle<Object> obj = Object::New();
 
-      const dtEntity::PropertyContainer::PropertyMap& props = component->GetAllProperties();
-      dtEntity::PropertyContainer::PropertyMap::const_iterator i;
+      const dtEntity::PropertyGroup& props = component->Get();
+      dtEntity::PropertyGroup::const_iterator i;
 
       for(i = props.begin(); i != props.end(); ++i)
       {
          std::string propname = dtEntity::GetStringFromSID(i->first);
          const dtEntity::Property* prop = i->second;
-         obj->Set(ToJSString(propname), ConvertPropertyToValue(args.Holder()->CreationContext(), prop));
+         obj->Set(ToJSString(propname), ConvertPropertyToValue(args.This()->CreationContext(), prop));
       }
 
       return scope.Close(obj);
@@ -153,7 +154,7 @@ namespace dtEntityWrappers
    ////////////////////////////////////////////////////////////////////////////////
    Handle<Value> COFinished(const Arguments& args)
    {
-      dtEntity::Component* component = UnwrapComponent(args.Holder());
+      dtEntity::Component* component = UnwrapComponent(args.This());
       if(component == NULL)
       {
          return ThrowError("Accessing a deleted component!");
@@ -168,7 +169,7 @@ namespace dtEntityWrappers
    {  
       Handle<External> ext = Handle<External>::Cast(args[0]);
       dtEntity::Component* co = static_cast<dtEntity::Component*>(ext->Value());
-      args.Holder()->SetInternalField(0, External::New(co));
+      args.This()->SetInternalField(0, External::New(co));
       return Undefined();
    }
 
@@ -179,7 +180,7 @@ namespace dtEntityWrappers
       {
          return False();
       }
-      dtEntity::Component* component = UnwrapComponent(args.Holder());
+      dtEntity::Component* component = UnwrapComponent(args.This());
       dtEntity::Component* other = UnwrapComponent(args[0]);
       return (other == component) ? True() : False();
    }
@@ -196,12 +197,12 @@ namespace dtEntityWrappers
          return wrapped;
       }
 
-      Context::Scope context_scope(scriptsys->GetGlobalContext());
-
-      if(s_componentTemplate.IsEmpty())
+      Handle<FunctionTemplate> templt = GetScriptSystem()->GetTemplateBySID(s_componentWrapper);
+      if(templt.IsEmpty())
       {
-         Handle<FunctionTemplate> templt = FunctionTemplate::New();
-         s_componentTemplate = Persistent<FunctionTemplate>::New(templt);
+
+         templt = FunctionTemplate::New();
+
          templt->SetClassName(String::New("Component"));
          templt->InstanceTemplate()->SetInternalFieldCount(1);
 
@@ -212,9 +213,12 @@ namespace dtEntityWrappers
          proto->Set("properties", FunctionTemplate::New(COProperties));
          proto->Set("toString", FunctionTemplate::New(COToString));
          proto->Set("finished", FunctionTemplate::New(COFinished));
+
+         GetScriptSystem()->SetTemplateBySID(s_componentWrapper, templt);
       }
 
-      Local<Object> instance = s_componentTemplate->GetFunction()->NewInstance();
+
+      Local<Object> instance = templt->GetFunction()->NewInstance();
       instance->SetInternalField(0, External::New(v));
       instance->SetHiddenValue(scriptsys->GetEntityIdString(), Uint32::New(eid));
 
@@ -225,8 +229,8 @@ namespace dtEntityWrappers
       if(propnamesval.IsEmpty())
       {
          Handle<Object> names = Object::New();
-         dtEntity::PropertyContainer::PropertyMap::const_iterator i;
-         const dtEntity::PropertyContainer::PropertyMap& props = v->GetAllProperties();
+         dtEntity::PropertyGroup::const_iterator i;
+         const dtEntity::PropertyGroup& props = v->Get();
          for(i = props.begin(); i != props.end(); ++i)
          {
             dtEntity::StringId sid = i->first;
@@ -270,11 +274,13 @@ namespace dtEntityWrappers
    ////////////////////////////////////////////////////////////////////////////////
    bool IsComponent(v8::Handle<v8::Value> val)
    {
-     if(s_componentTemplate.IsEmpty())
+     HandleScope scope;
+     Handle<FunctionTemplate> tmplt = GetScriptSystem()->GetTemplateBySID(s_componentWrapper);
+     if(tmplt.IsEmpty())
      {
-       return false;
+        return false;
      }
-     return s_componentTemplate->HasInstance(val);
+     return tmplt->HasInstance(val);
    }
 
 }

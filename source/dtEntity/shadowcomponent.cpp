@@ -20,8 +20,9 @@
 
 #include <dtEntity/shadowcomponent.h>
 
-#include <dtEntity/basemessages.h>
 #include <dtEntity/applicationcomponent.h>
+#include <dtEntity/core.h>
+#include <dtEntity/osgsysteminterface.h>
 #include <dtEntity/entitymanager.h>
 #include <dtEntity/lightcomponent.h>
 #include <dtEntity/nodemasks.h>
@@ -174,10 +175,8 @@ namespace dtEntity
       osgShadow::ShadowedScene* shadowedScene = static_cast<osgShadow::ShadowedScene*>(GetNode());
       shadowedScene->setShadowTechnique(mTechnique);
 
-      ApplicationSystem* appsys;
-      mEntity->GetEntityManager().GetEntitySystem(ApplicationSystem::TYPE, appsys);
-      
-      osg::ref_ptr<osg::Light> light = appsys->GetPrimaryView()->getLight();
+      OSGSystemInterface* iface = static_cast<OSGSystemInterface*>(GetSystemInterface());
+      osg::ref_ptr<osg::Light> light = iface->GetPrimaryView()->getLight();
       
       if(msm)
       {
@@ -219,24 +218,24 @@ namespace dtEntity
    ////////////////////////////////////////////////////////////////////////////
    ShadowSystem::ShadowSystem(EntityManager& em)
       : DefaultEntitySystem<ShadowComponent>(em)
+      , mEnabled(
+           DynamicBoolProperty::SetValueCB(this, &ShadowSystem::SetEnabled),
+           DynamicBoolProperty::GetValueCB(this, &ShadowSystem::GetEnabled)
+          )
+      , mEnabledVal(true)
    {
       Register(EnabledId, &mEnabled);
-
-      mEnabled.Set(true);
    }
 
    ////////////////////////////////////////////////////////////////////////////
-   void ShadowSystem::OnPropertyChanged(StringId propname, Property &prop)
+   ShadowSystem::~ShadowSystem()
    {
-      if(propname == EnabledId)
-      {
-         SetEnabled(prop.BoolValue());
-      }
    }
 
    ////////////////////////////////////////////////////////////////////////////
    void ShadowSystem::SetEnabled(bool v)
    {
+      mEnabledVal = v;
       for(ComponentStore::iterator i = mComponents.begin(); i != mComponents.end(); ++i)
       {
          i->second->SetEnabled(v);

@@ -72,7 +72,7 @@ namespace dtEntity
          ++it;
       }
       mMessageFunctors.insert(it, std::make_pair(msgtype, e));
-      
+      assert(IsRegistered(msgtype, ftr));
    }
 
    ///////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -86,6 +86,22 @@ namespace dtEntity
          if(it->second.mFunctor == ftr)
          {
             it->second.mOptions |= FilterOptions::UNREGISTERED;
+            return true;
+         }
+      }
+      return false;
+   }
+
+   ///////////////////////////////////////////////////////////////////////////////////////////////////////
+   bool MessagePump::IsRegistered(MessageType msgtype, const MessageFunctor& ftr)
+   {
+      std::pair<MessageFunctorRegistry::iterator, MessageFunctorRegistry::iterator> keyRange;
+      keyRange = mMessageFunctors.equal_range(msgtype);
+      MessageFunctorRegistry::iterator it = keyRange.first;
+      for(; it != keyRange.second; ++it)
+      {
+         if(it->second.mFunctor == ftr)
+         {
             return true;
          }
       }
@@ -156,7 +172,7 @@ namespace dtEntity
    ///////////////////////////////////////////////////////////////////////////////
    void MessagePump::EnqueueMessage(const Message& msg, double when)
    {
-      if(when == 0)
+      if(when <= 0.001)
       {
          mMessageQueue.Push(msg.Clone());
       }

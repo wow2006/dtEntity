@@ -20,15 +20,17 @@
 * Martin Scheffler
 */
 
-#include <osg/ref_ptr>
 #include <dtEntity/export.h>
 #include <dtEntity/defaultentitysystem.h>
-#include <dtEntity/component.h>
 #include <dtEntity/dynamicproperty.h>
 #include <dtEntity/nodecomponent.h>
 #include <dtEntity/property.h>
 #include <dtEntity/stringid.h>
-#include <osg/Group>
+
+namespace osg
+{
+   class Group;
+}
 
 namespace dtEntity
 {
@@ -61,8 +63,6 @@ namespace dtEntity
          return TYPE; 
       }
 
-      virtual void Finished();
-
       virtual osg::Group* GetGroup() const;
       
       // return group to attach children to
@@ -76,11 +76,15 @@ namespace dtEntity
        * of children. These will be attached.
        */
       void SetChildren(const PropertyArray& arr);
-      PropertyArray GetChildren() const { return mChildren.Get(); }
+      PropertyArray GetChildren() const { return mChildrenVal.Get(); }
 
    private:
-      
-      ArrayProperty mChildren;
+
+      // to prevent redundant code in constructors
+      void Init();
+
+      DynamicArrayProperty mChildren;
+      ArrayProperty mChildrenVal;
    };
 
 

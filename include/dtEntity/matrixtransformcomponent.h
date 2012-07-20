@@ -20,7 +20,6 @@
 * Martin Scheffler
 */
 
-#include <osg/ref_ptr>
 #include <dtEntity/export.h>
 #include <dtEntity/defaultentitysystem.h>
 #include <dtEntity/component.h>
@@ -28,7 +27,11 @@
 #include <dtEntity/transformcomponent.h>
 #include <dtEntity/property.h>
 #include <dtEntity/stringid.h>
-#include <osg/Group>
+
+namespace osg
+{
+   class MatrixTransform;
+}
 
 namespace dtEntity
 {

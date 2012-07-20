@@ -25,8 +25,7 @@
 #include <dtEntity/defaultentitysystem.h>
 #include <dtEntity/groupcomponent.h>
 #include <dtEntity/stringid.h>
-#include <osg/Geode>
-#include <osgShadow/ShadowMap>
+#include <osgShadow/ShadowTechnique>
 
 namespace dtEntity
 {
@@ -99,13 +98,14 @@ namespace dtEntity
       static const StringId EnabledId;
 
       ShadowSystem(EntityManager& em);
+      virtual ~ShadowSystem();
 
-      virtual void OnPropertyChanged(StringId propname, Property &prop);
       void SetEnabled(bool);
-      bool GetEnabled() const { return mEnabled.Get(); }
+      bool GetEnabled() const { return mEnabledVal; }
 
    private:
-      BoolProperty mEnabled;
+      DynamicBoolProperty mEnabled;
+      bool mEnabledVal;
    };
 
 }

@@ -85,10 +85,21 @@ namespace dtEntity
    };
 
 
+
+   ////////////////////////////////////////////////////////////////////////////////
+   // pure virtual interface
+   class MessageReceiver
+   {
+   public:
+      ~MessageReceiver() {}
+      virtual void Receive(const dtEntity::Message& msg) = 0;
+   };
+
    ////////////////////////////////////////////////////////////////////////////////
 
 
    class DT_ENTITY_EXPORT MessagePump
+         : public MessageReceiver
    {
    public:
 
@@ -125,6 +136,11 @@ namespace dtEntity
       virtual bool UnregisterForMessages(MessageType msgtype, MessageFunctor& ftr);
 
       /**
+      * returns true if functor is registered to message
+      */
+      virtual bool IsRegistered(MessageType msgtype, const MessageFunctor& ftr);
+
+      /**
       * Immediately send a message to all registered functors
       * Warning: beware of circular dependencies!
       * @param msg The message to send
@@ -138,6 +154,12 @@ namespace dtEntity
       */
       void EnqueueMessage(const Message& msg);
       void EnqueueMessage(const Message& msg, double when);
+
+      // implement MessageReceiver interface
+      virtual void Receive(const dtEntity::Message& msg)
+      {
+         EnqueueMessage(msg);
+      }
 
       /**
       * Emit all messages in message queue

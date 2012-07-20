@@ -22,10 +22,12 @@
 #include <dtEntity/applicationcomponent.h>
 #include <dtEntity/cameracomponent.h>
 #include <dtEntity/componentfactories.h>
+#include <dtEntity/core.h>
 #include <dtEntity/layerattachpointcomponent.h>
 #include <dtEntity/layercomponent.h>
 #include <dtEntity/mapcomponent.h>
 #include <dtEntity/matrixtransformcomponent.h>
+#include <dtEntity/osgsysteminterface.h>
 #include <dtEntity/positionattitudetransformcomponent.h>
 #include <dtEntity/staticmeshcomponent.h>
 #include <dtEntity/systemmessages.h>
@@ -137,10 +139,6 @@ namespace dtEntity
 
       osgDB::FilePathList paths = osgDB::getDataFilePathList();
 
-      if(!baseassets.empty() && (std::find(paths.begin(), paths.end(), baseassets) == paths.end())) 
-      {
-         paths.push_back(baseassets);
-      }
 
 #if defined(_MSC_VER) || defined(__CYGWIN__) || defined(__MINGW32__) || defined( __BCPLUSPLUS__)  || defined( __MWERKS__)
       const char separator = ';';
@@ -160,7 +158,12 @@ namespace dtEntity
             }
          }
       }
-      
+
+      if(!baseassets.empty() && (std::find(paths.begin(), paths.end(), baseassets) == paths.end()))
+      {
+         paths.push_back(baseassets);
+      }
+
       osgDB::setDataFilePathList(paths);
       return true;
 
@@ -176,6 +179,8 @@ namespace dtEntity
                       bool addConsoleLog,
                       osg::Group* pSceneNode)
    {
+      SetSystemInterface(new OSGSystemInterface());
+
       if(pSceneNode == NULL)
       {
          pSceneNode = new osg::Group();
@@ -196,10 +201,8 @@ namespace dtEntity
       AddDefaultEntitySystemsAndFactories(argc, argv, em);
      
       // give application system access to viewer
-      dtEntity::ApplicationSystem* appsystem;
-      em.GetEntitySystem(ApplicationSystem::TYPE, appsystem);
-      appsystem->SetViewer(&viewer);
-
+      OSGSystemInterface* iface = static_cast<OSGSystemInterface*>(GetSystemInterface());
+      iface->SetViewer(&viewer);
       bool success = DoScreenSetup(argc, argv, viewer, em);
       if(!success)
       {
@@ -232,25 +235,28 @@ namespace dtEntity
    {
       assert(pSceneNode != NULL);
 
-      dtEntity::ApplicationSystem* appsystem;
-      em.GetEntitySystem(ApplicationSystem::TYPE, appsystem);
+      OSGSystemInterface* iface = static_cast<OSGSystemInterface*>(GetSystemInterface());
 
-      if(appsystem->GetViewer() == NULL)
+      if(iface->GetViewer() == NULL)
       {
-         appsystem->SetViewer(&viewer);
+         iface->SetViewer(&viewer);
       }
       
       // install update traversal callback of application system into scene graph
       // root node. Used for sending tick messages etc.
-      appsystem->InstallUpdateCallback(pSceneNode);
+      iface->InstallUpdateCallback(pSceneNode);
 
       // set scene graph root node as scene data for viewer. This is done again in camera setup,
       // but to make it accessible immediately we add it here, first
-      appsystem->GetPrimaryView()->setSceneData(pSceneNode);
+      osgViewer::ViewerBase::Views views;
+      iface->GetViewer()->getViews(views);
+      views.front()->setSceneData(pSceneNode);
 
       // add input handler as callback to primary camera. This is also done again in Camera setup,
       // but is done here first so everything runs fine without a camera.
-      appsystem->GetPrimaryView()->addEventHandler(&appsystem->GetWindowManager()->GetInputHandler());
+      dtEntity::ApplicationSystem* appsystem;
+      em.GetEntitySystem(ApplicationSystem::TYPE, appsystem);
+      views.front()->addEventHandler(&appsystem->GetWindowManager()->GetInputHandler());
 
       // create an entity holding the scene graph root as an attach point
       LayerAttachPointSystem* layerattachsys;

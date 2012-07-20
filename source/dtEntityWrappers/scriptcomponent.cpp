@@ -20,19 +20,22 @@
 
 #include <dtEntityWrappers/scriptcomponent.h>
 
-#include <dtEntityWrappers/componentwrapper.h>
-#include <dtEntityWrappers/inputhandlerwrapper.h>
-#include <dtEntityWrappers/globalfunctions.h>
-#include <dtEntityWrappers/messages.h>
-#include <dtEntityWrappers/wrappers.h>
-#include <dtEntityWrappers/entitymanagerwrapper.h>
 
+#include <dtEntity/core.h>
+#include <dtEntity/osgsysteminterface.h>
 #include <dtEntity/applicationcomponent.h>
-#include <dtEntity/basemessages.h>
+#include <dtEntity/commandmessages.h>
 #include <dtEntity/entity.h>
-#include <dtEntity/stringid.h>
-#include <dtEntity/windowmanager.h>
 #include <dtEntity/inputhandler.h>
+#include <dtEntity/stringid.h>
+#include <dtEntity/systemmessages.h>
+#include <dtEntity/windowmanager.h>
+#include <dtEntityWrappers/componentwrapper.h>
+#include <dtEntityWrappers/entitymanagerwrapper.h>
+#include <dtEntityWrappers/globalfunctions.h>
+#include <dtEntityWrappers/inputhandlerwrapper.h>
+#include <dtEntityWrappers/jsproperty.h>
+#include <dtEntityWrappers/messages.h>
 #include <dtEntityWrappers/screenwrapper.h>
 #include <dtEntityWrappers/v8helpers.h>
 #include <dtEntityWrappers/wrappers.h>
@@ -92,10 +95,6 @@ namespace dtEntityWrappers
       mSceneLoadedFunctor = dtEntity::MessageFunctor(this, &ScriptSystem::OnSceneLoaded);
       GetEntityManager().RegisterForMessages(dtEntity::SceneLoadedMessage::TYPE, mSceneLoadedFunctor, "ScriptSystem::OnSceneLoaded");
 
-      mResetSystemFunctor = dtEntity::MessageFunctor(this, &ScriptSystem::OnResetSystem);
-      GetEntityManager().RegisterForMessages(dtEntity::ResetSystemMessage::TYPE, mResetSystemFunctor,
-                             dtEntity::FilterOptions::ORDER_EARLY, "ScriptSystem::OnResetSystem");
-
       mTickFunctor = dtEntity::MessageFunctor(this, &ScriptSystem::Tick);
       em.RegisterForMessages(dtEntity::TickMessage::TYPE, mTickFunctor, "ScriptSystem::Tick");
 
@@ -118,7 +117,19 @@ namespace dtEntityWrappers
          i->second.Dispose();
       }
       mComponentMap.clear();
+
+      for(TemplateMap::iterator i = mTemplateMap.begin(); i != mTemplateMap.end(); ++i)
+      {
+         i->second.Dispose();
+      }
+      mTemplateMap.clear();
+
       mGlobalContext.Dispose();
+
+      GetEntityManager().UnregisterForMessages(dtEntity::SceneLoadedMessage::TYPE, mSceneLoadedFunctor);
+      GetEntityManager().UnregisterForMessages(dtEntity::TickMessage::TYPE, mTickFunctor);
+      GetEntityManager().UnregisterForMessages(ExecuteScriptMessage::TYPE, mLoadScriptFunctor);
+
    }
 
    ////////////////////////////////////////////////////////////////////////////
@@ -136,8 +147,12 @@ namespace dtEntityWrappers
       // create persistent global context
       mGlobalContext = Persistent<Context>::New(Context::New(NULL, global));
 
-      RegisterGlobalFunctions(this);
-      
+      // store pointer to script system into isolate data to have it globally available in javascript
+      Isolate::GetCurrent()->SetData(this);
+
+      RegisterGlobalFunctions(this, mGlobalContext);
+      RegisterPropertyFunctions(this, mGlobalContext);
+
       InitializeAllWrappers(GetEntityManager());
 
       Handle<Context> context = GetGlobalContext();
@@ -148,16 +163,29 @@ namespace dtEntityWrappers
       tmplt->SetClassName(String::New("ScriptSystem"));
 
       dtEntity::ApplicationSystem* as;
-      GetEntityManager().GetEntitySystem(dtEntity::ApplicationSystem::TYPE, as);
-      osgViewer::GraphicsWindow* window = as->GetPrimaryWindow();
+      if(GetEntityManager().GetEntitySystem(dtEntity::ApplicationSystem::TYPE, as))
+      {
+         dtEntity::OSGSystemInterface* iface = static_cast<dtEntity::OSGSystemInterface*>(dtEntity::GetSystemInterface());
+         osgViewer::GraphicsWindow* window = iface->GetPrimaryWindow();
 
-      dtEntity::InputHandler* input = &as->GetWindowManager()->GetInputHandler();
+         if(window)
+         {
+            context->Global()->Set(String::New("Screen"), WrapScreen(this, iface->GetPrimaryView(), window));
+         }
 
-      context->Global()->Set(String::New("Axis"), WrapAxes(input));
-      context->Global()->Set(String::New("Input"), WrapInputHandler(GetGlobalContext(), input));
-      context->Global()->Set(String::New("Key"), WrapKeys(input));
+         if(as->GetWindowManager())
+         {
+            dtEntity::InputHandler* input = &as->GetWindowManager()->GetInputHandler();
+            if(input)
+            {
+               context->Global()->Set(String::New("Input"), WrapInputHandler(GetGlobalContext(), input));
+               context->Global()->Set(String::New("Axis"), WrapAxes(input));
+               context->Global()->Set(String::New("Key"), WrapKeys(input));
+            }
+         }
+      }
+
       context->Global()->Set(String::New("MouseWheelState"), WrapMouseWheelStates());
-      context->Global()->Set(String::New("Screen"), WrapScreen(this, as->GetPrimaryView(), window));
       context->Global()->Set(String::New("TouchPhase"), WrapTouchPhases());
       context->Global()->Set(String::New("Priority"), WrapPriorities());
       context->Global()->Set(String::New("Order"), WrapPriorities());
@@ -167,6 +195,7 @@ namespace dtEntityWrappers
    ////////////////////////////////////////////////////////////////////////////
    void ScriptSystem::Finished()
    {
+      BaseClass::Finished();
       if(mDebugEnabled.Get() && !mDebugPortOpened)
       {
          mDebugPortOpened = true;
@@ -202,13 +231,6 @@ namespace dtEntityWrappers
          v8::HandleScope scope;
          ExecuteFile(script);
       }
-   }
-
-   ////////////////////////////////////////////////////////////////////////////
-   void ScriptSystem::OnResetSystem(const dtEntity::Message& msg)
-   {
-      UnregisterJavaScriptFromMessages(this);
-      SetupContext();
    }
 
    ////////////////////////////////////////////////////////////////////////////
@@ -429,7 +451,7 @@ namespace dtEntityWrappers
       dtEntity::Component* component = UnwrapComponent(v);
       if(component != NULL)
       {
-         ScriptSystem* scriptsys = static_cast<ScriptSystem*>(scriptsysnull);
+         ScriptSystem* scriptsys = static_cast<ScriptSystem*>(Isolate::GetCurrent()->GetData());
          HandleScope scope;
          Handle<Object> o = Handle<Object>::Cast(v);
          assert(!o.IsEmpty());
@@ -488,5 +510,22 @@ namespace dtEntityWrappers
    void ScriptSystem::ComponentDeleted(dtEntity::ComponentType t, dtEntity::EntityId id)
    {
       RemoveFromComponentMap(t, id);
+   }
+
+   ////////////////////////////////////////////////////////////////////////////
+   Handle<FunctionTemplate> ScriptSystem::GetTemplateBySID(dtEntity::StringId v) const
+   {
+      TemplateMap::const_iterator i = mTemplateMap.find(v);
+      if(i == mTemplateMap.end())
+      {
+         return Handle<FunctionTemplate>();
+      }
+      return i->second;
+   }
+
+   ////////////////////////////////////////////////////////////////////////////
+   void ScriptSystem::SetTemplateBySID(dtEntity::StringId v, v8::Handle<v8::FunctionTemplate> tpl)
+   {
+      mTemplateMap[v] = Persistent<FunctionTemplate>::New(tpl);
    }
 }

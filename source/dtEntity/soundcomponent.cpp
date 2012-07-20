@@ -20,12 +20,14 @@
 
 #include <dtEntity/soundcomponent.h>
 
+#include <dtEntity/core.h>
+#include <dtEntity/osgsysteminterface.h>
 #include <dtEntity/audiomanager.h>
 #include <dtEntity/sound.h>
-#include <dtEntity/basemessages.h>
 #include <dtEntity/entity.h>
 #include <dtEntity/entitymanager.h>
 #include <dtEntity/applicationcomponent.h>
+#include <dtEntity/systemmessages.h>
 #include <dtEntity/transformcomponent.h>
 #include <osg/Camera>
 #include <assert.h>
@@ -71,6 +73,7 @@ namespace dtEntity
    ////////////////////////////////////////////////////////////////////////////////
    void SoundComponent::Finished()
    {
+      BaseClass::Finished();
       FreeSound();
            
       if(mSoundPath.Get() == "")
@@ -206,6 +209,7 @@ namespace dtEntity
    ////////////////////////////////////////////////////////////////////////////////
    void SoundSystem::Finished()
    {
+      BaseClass::Finished();
       if (mListenerLinkToCamera.Get())
       {
          CopyCamTransformToListener();
@@ -233,7 +237,7 @@ namespace dtEntity
    ////////////////////////////////////////////////////////////////////////////////
    void SoundSystem::OnEnterWorld(const Message& msg)
    {
-      EntityId eid = (EntityId)msg.GetUInt(EntityAddedToSceneMessage::AboutEntityId);
+      EntityId eid = static_cast<EntityId>(msg.GetUInt(EntityAddedToSceneMessage::AboutEntityId));
       SoundComponent* sc;
       if(GetEntityManager().GetComponent(eid, sc))
       {
@@ -247,7 +251,7 @@ namespace dtEntity
    ////////////////////////////////////////////////////////////////////////////////
    void SoundSystem::OnLeaveWorld(const Message& msg)
    {
-      EntityId eid = (EntityId)msg.GetUInt(EntityRemovedFromSceneMessage::AboutEntityId);
+      EntityId eid = static_cast<EntityId>(msg.GetUInt(EntityRemovedFromSceneMessage::AboutEntityId));
       SoundComponent* sc;
       if(GetEntityManager().GetComponent(eid, sc))
       {  
@@ -258,16 +262,15 @@ namespace dtEntity
    ////////////////////////////////////////////////////////////////////////////////
    void SoundSystem::OnWindowClosed(const Message& m)
    {
-      dtEntity::ApplicationSystem* appSys;
-      if (GetEntityManager().GetEntitySystem(dtEntity::ApplicationSystem::TYPE, appSys) )
+
+      const WindowClosedMessage& msg = static_cast<const WindowClosedMessage&>(m);
+      dtEntity::OSGSystemInterface* iface = static_cast<dtEntity::OSGSystemInterface*>(dtEntity::GetSystemInterface());
+      osg::Camera* currCam = iface->GetPrimaryCamera();
+      if(currCam == NULL || msg.GetName() == currCam->getGraphicsContext()->getName())
       {
-         const WindowClosedMessage& msg = static_cast<const WindowClosedMessage&>(m);
-         osg::Camera* currCam = appSys->GetPrimaryCamera();
-         if(currCam == NULL || msg.GetName() == currCam->getGraphicsContext()->getName())
-         {
-            mListenerLinkToCamera.Set(false);
-         }
+         mListenerLinkToCamera.Set(false);
       }
+
    }
 
    ////////////////////////////////////////////////////////////////////////////////
@@ -342,7 +345,8 @@ namespace dtEntity
       dtEntity::ApplicationSystem* pAppSys;
       if (GetEntityManager().GetEntitySystem(dtEntity::ApplicationSystem::TYPE, pAppSys) )
       {
-         osg::Camera* currCam = pAppSys->GetPrimaryCamera();
+         dtEntity::OSGSystemInterface* iface = static_cast<dtEntity::OSGSystemInterface*>(dtEntity::GetSystemInterface());
+         osg::Camera* currCam = iface->GetPrimaryCamera();
          if(currCam == NULL)
          {
             LOG_ERROR("Cannot copy cam transform to audio listener, no primary camera set!");

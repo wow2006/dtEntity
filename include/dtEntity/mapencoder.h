@@ -20,16 +20,13 @@
 * Martin Scheffler
 */
 
-#include <dtEntity/export.h>
-#include <dtEntity/entitymanager.h>
-#include <osg/Referenced>
 
 namespace dtEntity
 {
    /**
     * Pure virtual interface for loading and saving scene data to maps
     */
-   class DT_ENTITY_EXPORT MapEncoder : public osg::Referenced
+   class MapEncoder
    {
       
    public:
@@ -43,6 +40,9 @@ namespace dtEntity
 
       virtual bool LoadSceneFromFile(const std::string& path) = 0;
       virtual bool SaveSceneToFile(const std::string& path) = 0;
+
+      virtual bool AcceptsMapExtension(const std::string& /*extension*/) const = 0;
+      virtual bool AcceptsSceneExtension(const std::string& /*extension*/) const = 0;
    };
 }
 

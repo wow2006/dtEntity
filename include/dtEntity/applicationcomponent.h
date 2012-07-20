@@ -20,16 +20,14 @@
 * Martin Scheffler
 */
 
-
-
-#include <osg/ref_ptr>
+#include <dtEntity/component.h>
+#include <dtEntity/dynamicproperty.h>
 #include <dtEntity/export.h>
 #include <dtEntity/entitysystem.h>
-#include <dtEntity/component.h>
 #include <dtEntity/message.h>
 #include <dtEntity/scriptaccessor.h>
 #include <dtEntity/stringid.h>
-#include <osg/Group>
+#include <dtEntity/systeminterface.h>
 #include <osg/Timer>
 
 namespace osgViewer
@@ -38,6 +36,13 @@ namespace osgViewer
    class Window;
    class ViewerBase;
    class GraphicsWindow;
+}
+
+namespace osg
+{
+   class Camera;
+   class Group;
+   class Node;
 }
 
 namespace dtEntity
@@ -68,8 +73,6 @@ namespace dtEntity
       ApplicationSystem(EntityManager& em);
       ~ApplicationSystem();
 
-      void OnPropertyChanged(StringId propname, Property &prop);
-
       ComponentType GetComponentType() const { return TYPE; }
 
       void EmitTickMessagesAndQueuedMessages();
@@ -93,12 +96,12 @@ namespace dtEntity
       /**
        * @return the current simulation wall-clock time. This is in MICRO SECONDS (seconds * 1000000LL).
        */
-      osg::Timer_t GetSimulationClockTime() const;
+      Timer_t GetSimulationClockTime() const;
 
       /**
        * @return The current real clock time. This is in MICRO SECONDS (seconds * 1000000LL).
        */
-      static osg::Timer_t GetRealClockTime();
+      static Timer_t GetRealClockTime();
 
       /**
        * Change the time settings.
@@ -106,7 +109,7 @@ namespace dtEntity
        * @param newTimeScale the new simulation time progression as a factor of real time.
        * @param newClockTime  The new simulation wall-clock time. In MICRO SECONDs (seconds * 1000000LL).
        */
-      void ChangeTimeSettings(double newTime, float newTimeScale, const osg::Timer_t& newClockTime);
+      void ChangeTimeSettings(double newTime, float newTimeScale, const Timer_t& newClockTime);
 
 	  /** Functor reacting to SetComponentPropertiesMessage */
       void OnSetComponentProperties(const Message& msg);
@@ -114,32 +117,19 @@ namespace dtEntity
 	  /** Functor reacting to SetSystemPropertiesMessageandling is not perfect; the  */
       void OnSetSystemProperties(const Message& msg);
 
-      /** reacts to ResetSystemMessage */
-      void OnResetSystem(const Message& msg);
-      
       /** adds input callback to cameras */
       void OnCameraAdded(const Message& msg);      
 
-      void InstallUpdateCallback(osg::Node*);
-
-
       void SetWindowManager(WindowManager* wm);
       WindowManager* GetWindowManager() const;
-
-      osgViewer::ViewerBase* GetViewer() const;
-      void SetViewer(osgViewer::ViewerBase*);
-
-      osgViewer::View* GetPrimaryView() const;      
-      osgViewer::GraphicsWindow* GetPrimaryWindow() const;
-      osg::Camera* GetPrimaryCamera() const;
 
       void AddCmdLineArg(const std::string& arg)
       {
          mArgvArray.Add(new StringProperty(arg));
       }
 
-      int GetNumCmdLineArgs() const { return  mArgvArray.Size(); }
-      std::string GetCmdLineArg(int i) { return mArgvArray.Get()[i]->StringValue(); }
+      ArrayProperty::size_type GetNumCmdLineArgs() const { return  mArgvArray.Size(); }
+      std::string GetCmdLineArg(ArrayProperty::size_type i) { return mArgvArray.Get()[i]->StringValue(); }
 
    private:
 
@@ -157,10 +147,9 @@ namespace dtEntity
 
       ApplicationSystemInfo mApplicationSystemInfo;
 
-      FloatProperty mTimeScale;
       ArrayProperty mArgvArray;
 
-      ApplicationImpl* mImpl;
+      DynamicFloatProperty mTimeScale;
 
       Property* ScriptGetTimeScale(const PropertyArgs& args)
       {
@@ -176,8 +165,6 @@ namespace dtEntity
       {
          return new DoubleProperty(GetSimulationClockTime());
       }
-
-      Property* ScriptGetSimulationClockTimeString(const PropertyArgs& args);
 
       Property* ScriptGetRealClockTime(const PropertyArgs& args)
       {

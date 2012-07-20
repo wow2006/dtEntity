@@ -23,16 +23,15 @@
 
 #include <dtEntity/export.h>
 #include <dtEntity/component.h>
-#include <dtEntity/entity.h>
-#include <dtEntity/entityid.h>
 #include <dtEntity/defaultentitysystem.h>
 #include <dtEntity/nodecomponent.h>
+#include <dtEntity/dynamicproperty.h>
 #include <osg/Geometry>
 #include <osg/Program>
 
 namespace dtEntity
 {      
-      
+
    class TextureLabelSystem;
 
    class DT_ENTITY_EXPORT TextureLabelComponent : public dtEntity::NodeComponent
@@ -66,8 +65,6 @@ namespace dtEntity
 
       virtual void Finished();
 
-      virtual void OnPropertyChanged(dtEntity::StringId propname, dtEntity::Property& prop);
-
       virtual void OnAddedToEntity(dtEntity::Entity& entity);
       std::string GetPath() const { return mPath.Get(); }
 
@@ -76,12 +73,7 @@ namespace dtEntity
 
       osg::Geode* GetGeode() const;
       
-      osg::Vec3 GetOffset()
-      {
-         return mOffset.Get();
-      }
-
-      osg::Vec3 GetOffset() const  { return mOffset.Get(); }
+      osg::Vec3 GetOffset() const  { return mOffsetVal; }
       void SetOffset(const osg::Vec3& o);
       
       void SetMaxSize(unsigned int v) { mMaxSize.Set(v); }
@@ -93,7 +85,7 @@ namespace dtEntity
       void SetDistanceAttenuation(const osg::Vec3& v) { mDistanceAttenuation.Set(v); }
       osg::Vec3 GetDistanceAttenuation() const { return mDistanceAttenuation.Get(); }
 
-      osg::Vec4 GetColor() const { return mColor.Get(); }
+      osg::Vec4 GetColor() const { return mColorVal; }
       void SetColor(const osg::Vec4& v);
 
       void SetVisible(bool v);
@@ -107,13 +99,15 @@ namespace dtEntity
 
       osg::ref_ptr<osg::Vec4Array> mColorArray;
       osg::ref_ptr<osg::Geometry> mDotGeometry;
-      dtEntity::Vec3Property mOffset;
-      dtEntity::Vec4Property mColor;
+      dtEntity::DynamicVec3Property mOffset;
+      osg::Vec3 mOffsetVal;
+      dtEntity::DynamicVec4Property mColor;
+      osg::Vec4 mColorVal;
       dtEntity::StringProperty mPath;
       dtEntity::UIntProperty mMinSize;
       dtEntity::UIntProperty mMaxSize;
       dtEntity::Vec3Property mDistanceAttenuation;
-      dtEntity::BoolProperty mVisible;
+      dtEntity::DynamicBoolProperty mVisible;
       dtEntity::BoolProperty mAlwaysOnTop;
       TextureLabelSystem* mLabelSystem;
       osg::ref_ptr<osg::Uniform> mColorUniform;
@@ -133,18 +127,19 @@ namespace dtEntity
       static const dtEntity::ComponentType TYPE;
 
       TextureLabelSystem(dtEntity::EntityManager& em);
-      virtual void OnPropertyChanged(dtEntity::StringId propname, dtEntity::Property& prop);
-      
+      ~TextureLabelSystem();
+
       osg::StateSet* GetSymbolStateset(const std::string& symbolpath, TextureLabelComponent& component);
 
       void SetupLabel(TextureLabelComponent& component);
 
       void SetEnabled(bool v);
-      bool GetEnabled() const { return mEnabled.Get(); }
+      bool GetEnabled() const;
 
    private:
 
-      dtEntity::BoolProperty mEnabled;
+      dtEntity::DynamicBoolProperty mEnabled;
+      bool mEnabledVal;
       osg::ref_ptr<osg::Program> mProgram;
    };
 }

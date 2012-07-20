@@ -24,8 +24,6 @@
 #include <dtEntity/entitymanager.h>
 #include <dtEntity/mapencoder.h>
 #include <dtEntity/property.h>
-#include <osg/ref_ptr>
-#include <osg/Timer>
 #include <rapidxml.hpp>
 
 namespace dtEntity
@@ -53,6 +51,16 @@ namespace dtEntity
 
       // empty dest means overwrite original file
       virtual bool SaveSceneToFile(const std::string& path);
+
+      virtual bool AcceptsMapExtension(const std::string& extension) const
+      {
+         return extension == "dtemap";
+      }
+
+      virtual bool AcceptsSceneExtension(const std::string& extension) const
+      {
+         return extension == "dtescene";
+      }
 
       static dtEntity::Property* ParseProperty(rapidxml::xml_node<>* element);
 

@@ -26,6 +26,7 @@
 #include <dtEntityEditor/editormainwindow.h>
 #include <dtEntityQtWidgets/qtguiwindowsystemwrapper.h>
 #include <dtEntity/log.h>
+#include <dtEntity/property.h>
 #include <osg/Vec2>
 #include <osg/Vec3>
 #include <osg/Vec4>
@@ -62,6 +63,7 @@ public:
       }
       catch(...)
       {
+         LOG_ERROR("Unknown exception caught");
       }
       return false;
    }
@@ -100,7 +102,7 @@ int main(int argc, char *argv[])
    qRegisterMetaType<osg::Vec3>("osg::Vec3");
    qRegisterMetaType<osg::Vec4>("osg::Vec4");
    qRegisterMetaType<osg::Timer_t>("osg::Timer_t");
-   qRegisterMetaType<dtEntity::DynamicPropertyContainer>("dtEntity::DynamicPropertyContainer");
+   qRegisterMetaType<dtEntity::GroupProperty>("dtEntity::GroupProperty");
    qRegisterMetaType<dtEntityQtWidgets::OSGGraphicsWindowQt*>("dtEntityQtWidgets::OSGGraphicsWindowQt*");
 
    bool singleThread = false;
@@ -126,9 +128,19 @@ int main(int argc, char *argv[])
             scene = argv[curArg];
          }
       }
+      else if(curArgv == "--pluginPath")
+      {
+         ++curArg;
+         if (curArg < argc)
+         {
+            pluginPath = argv[curArg];
+         }
+      }
    }
 
    osg::ref_ptr<EditorApplication> application = new EditorApplication(argc, argv);
+
+   application->SetAdditionalPluginPath(pluginPath);
 
    QThread* viewerThread;
 

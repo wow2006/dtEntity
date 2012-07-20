@@ -35,7 +35,7 @@
 #include <osgDB/FileUtils>
 #include <osg/Multisample>
 #include <osg/PolygonOffset>
-
+#include <osgText/Text>
 
 namespace dtEntity
 {
@@ -59,7 +59,16 @@ namespace dtEntity
 
    ////////////////////////////////////////////////////////////////////////////
    TextLabelComponent::TextLabelComponent()
-      : dtEntity::NodeComponent(new osg::Geode())
+      : dtEntity::NodeComponent(new osg::Geode())      
+      , mTexts(
+           DynamicArrayProperty::SetValueCB(this, &TextLabelComponent::SetTexts),
+           DynamicArrayProperty::GetValueCB(this, &TextLabelComponent::GetTexts)
+        )
+      , mAlwaysOnTop(
+         DynamicBoolProperty::SetValueCB(this, &TextLabelComponent::SetAlwaysOnTop),
+         DynamicBoolProperty::GetValueCB(this, &TextLabelComponent::GetAlwaysOnTop)
+        )
+      , mAlwaysOnTopVal(true)
       , mTextLabelSystem(NULL)
    {
       GetNode()->setName("TextLabelComponent");
@@ -75,7 +84,6 @@ namespace dtEntity
       ss->setMode(GL_FOG, osg::StateAttribute::OFF);
       GetNode()->setInitialBound(osg::BoundingBox(osg::Vec3(-1, -1, -1), osg::Vec3(1, 1, 1)));
       GetNode()->setCullingActive(false);
-      mAlwaysOnTop.Set(true);
    }
     
    ////////////////////////////////////////////////////////////////////////////
@@ -91,61 +99,59 @@ namespace dtEntity
    }
 
    ////////////////////////////////////////////////////////////////////////////
-   void TextLabelComponent::OnPropertyChanged(dtEntity::StringId propname, dtEntity::Property& prop)
+   void TextLabelComponent::SetTexts(const PropertyArray& texts)
    {
-      if(propname == TextsId)
+      mTextsVal.Set(texts);
+
+      ClearAll();
+      size_t count = 0;
+      const dtEntity::PropertyArray& grps = mTextsVal.Get();
+      dtEntity::PropertyArray::const_iterator i;
+      for(i = grps.begin(); i != grps.end(); ++i)
       {
-         ClearAll();
-         unsigned int count = 0;
-         const dtEntity::PropertyArray grps = prop.ArrayValue();
-         dtEntity::PropertyArray::const_iterator i;
-         for(i = grps.begin(); i != grps.end(); ++i)
-         {
-            dtEntity::PropertyGroup props = (*i)->GroupValue();
-            Create(count);
+         dtEntity::PropertyGroup props = (*i)->GroupValue();
+         Create(count);
 
-            std::string text = props[TextId]->StringValue();
-            SetText(count, text);
+         std::string text = props[TextId]->StringValue();
+         SetText(count, text);
 
-            osg::Vec4 color = props[ColorId]->Vec4Value();
-            SetColor(count, color);
+         osg::Vec4 color = props[ColorId]->Vec4Value();
+         SetColor(count, color);
 
-            osg::Vec4 bgcolor = props[BackdropColorId]->Vec4Value();
-            SetBackdropColor(count, bgcolor);
+         osg::Vec4 bgcolor = props[BackdropColorId]->Vec4Value();
+         SetBackdropColor(count, bgcolor);
 
-            bool visible = props[VisibleId]->BoolValue();
-            SetVisible(count, visible);
+         bool visible = props[VisibleId]->BoolValue();
+         SetVisible(count, visible);
 
-            bool highlighted = props[HighlightedId]->BoolValue();
-            SetHighlighted(count, highlighted);
+         bool highlighted = props[HighlightedId]->BoolValue();
+         SetHighlighted(count, highlighted);
 
-            osg::Vec3 offset = props[OffsetId]->Vec3Value();
-            SetOffset(count, offset);
+         osg::Vec3 offset = props[OffsetId]->Vec3Value();
+         SetOffset(count, offset);
 
-            float charheight = props[CharacterHeightId]->FloatValue();
-            SetCharacterHeight(count, charheight);
+         float charheight = props[CharacterHeightId]->FloatValue();
+         SetCharacterHeight(count, charheight);
 
-            std::string font = props[FontId]->StringValue();
-            SetFont(count, font);
+         std::string font = props[FontId]->StringValue();
+         SetFont(count, font);
 
-            std::string align = props[AlignmentId]->StringValue();
-            SetAlignment(count, align);
-            ++count;
-         }
+         std::string align = props[AlignmentId]->StringValue();
+         SetAlignment(count, align);
+         ++count;
       }
-      else if(propname == AlwaysOnTopId)
-      {
-         SetAlwaysOnTop(prop.BoolValue());
-      }
-      else
-      {
-         BaseClass::OnPropertyChanged(propname, prop);
-      }
+   }
+
+   ////////////////////////////////////////////////////////////////////////////
+   PropertyArray TextLabelComponent::GetTexts() const
+   {
+      return mTextsVal.Get();
    }
 
    ////////////////////////////////////////////////////////////////////////////
    void TextLabelComponent::Finished()
    {
+      BaseClass::Finished();
       for(unsigned int j = 0; j < GetNumTexts(); ++j)
       {
          SetVisible(j, mTextLabelSystem->GetEnabled());
@@ -153,7 +159,7 @@ namespace dtEntity
    }
 
    ////////////////////////////////////////////////////////////////////////////
-   void TextLabelComponent::Create(unsigned int textid)
+   void TextLabelComponent::Create(size_type textid)
    {
       bool visible = true;
       if(mTextLabelSystem != NULL && !mTextLabelSystem->GetEnabled())
@@ -195,8 +201,7 @@ namespace dtEntity
          geode->addDrawable(text);
       }
 
-      dtEntity::PropertyArray arr = mTexts.Get();
-      while(arr.size() < textid + 1)
+      while(mTextsVal.Get().size() < textid + 1)
       {
          dtEntity::PropertyGroup props;
          dtEntity::StringProperty text(""); 
@@ -227,14 +232,13 @@ namespace dtEntity
          props[AlignmentId] = &alignment;
 
          dtEntity::GroupProperty* grp = new dtEntity::GroupProperty(props);
-         mTexts.Add(grp);
-         arr = mTexts.Get();
+         mTextsVal.Add(grp);
       }
    }
 
 
    ////////////////////////////////////////////////////////////////////////////
-   void TextLabelComponent::Destroy(unsigned int textid)
+   void TextLabelComponent::Destroy(size_type textid)
    {
       if(mTextEntries.size() <= textid || !mTextEntries[textid].valid())
       {
@@ -255,7 +259,7 @@ namespace dtEntity
    }
 
    ////////////////////////////////////////////////////////////////////////////
-   void TextLabelComponent::SetVisible(unsigned int textid, bool enabled)
+   void TextLabelComponent::SetVisible(size_type textid, bool enabled)
    {
       if(mTextEntries.size() < textid || !mTextEntries[textid].valid())
       {
@@ -286,12 +290,12 @@ namespace dtEntity
       dtEntity::PropertyArray arr = mTexts.Get();
       assert(arr.size() > textid);
       dtEntity::PropertyGroup props = arr[textid]->GroupValue();
-      assert(props[VisibleId]->GetType() == dtEntity::DataType::BOOL);
+      assert(props[VisibleId]->GetDataType() == dtEntity::DataType::BOOL);
       static_cast<dtEntity::BoolProperty*>(props[VisibleId])->Set(enabled);
    }
 
    ////////////////////////////////////////////////////////////////////////////
-   bool TextLabelComponent::GetVisible(unsigned int textid) const
+   bool TextLabelComponent::GetVisible(size_type textid) const
    {
       if(!mTextEntries[textid].valid())
       {
@@ -301,7 +305,7 @@ namespace dtEntity
    }
 
    ////////////////////////////////////////////////////////////////////////////
-   void TextLabelComponent::SetText(unsigned int textid, const std::string& txt)
+   void TextLabelComponent::SetText(size_type textid, const std::string& txt)
    {
       if(mTextEntries.size() < textid || !mTextEntries[textid].valid())
       {
@@ -312,12 +316,12 @@ namespace dtEntity
       dtEntity::PropertyArray arr = mTexts.Get();
       assert(arr.size() > textid);
       dtEntity::PropertyGroup props = arr[textid]->GroupValue();
-      assert(props[TextId]->GetType() == dtEntity::DataType::STRING);
+      assert(props[TextId]->GetDataType() == dtEntity::DataType::STRING);
       static_cast<dtEntity::StringProperty*>(props[TextId])->Set(txt);
    }
 
    ////////////////////////////////////////////////////////////////////////////
-   std::string TextLabelComponent::GetText(unsigned int textid) const
+   std::string TextLabelComponent::GetText(size_type textid) const
    {
       if(!mTextEntries[textid].valid())
       {
@@ -327,7 +331,7 @@ namespace dtEntity
    }
 
    ////////////////////////////////////////////////////////////////////////////
-   void TextLabelComponent::SetHighlighted(unsigned int textid, bool h)
+   void TextLabelComponent::SetHighlighted(size_type textid, bool h)
    {
       if(!mTextEntries[textid].valid())
       {
@@ -338,12 +342,12 @@ namespace dtEntity
       dtEntity::PropertyArray arr = mTexts.Get();
       assert(arr.size() > textid);
       dtEntity::PropertyGroup props = arr[textid]->GroupValue();
-      assert(props[HighlightedId]->GetType() == dtEntity::DataType::BOOL);
+      assert(props[HighlightedId]->GetDataType() == dtEntity::DataType::BOOL);
       static_cast<dtEntity::BoolProperty*>(props[HighlightedId])->Set(h);
    }
 
    ////////////////////////////////////////////////////////////////////////////
-   bool TextLabelComponent::GetHighlighted(unsigned int textid) const
+   bool TextLabelComponent::GetHighlighted(size_type textid) const
    {
       if(!mTextEntries[textid].valid())
       {
@@ -353,7 +357,7 @@ namespace dtEntity
    }
 
    ////////////////////////////////////////////////////////////////////////////
-   void TextLabelComponent::SetColor(unsigned int textid, const osg::Vec4& c)
+   void TextLabelComponent::SetColor(size_type textid, const osg::Vec4& c)
    {
       if(!mTextEntries[textid].valid())
       {
@@ -368,7 +372,7 @@ namespace dtEntity
    }
 
    ////////////////////////////////////////////////////////////////////////////
-   osg::Vec4 TextLabelComponent::GetColor(unsigned int textid) const
+   osg::Vec4 TextLabelComponent::GetColor(size_type textid) const
    {
       if(!mTextEntries[textid].valid())
       {
@@ -378,7 +382,7 @@ namespace dtEntity
    }
 
    ////////////////////////////////////////////////////////////////////////////
-   void TextLabelComponent::SetOffset(unsigned int textid, const osg::Vec3& v)
+   void TextLabelComponent::SetOffset(size_type textid, const osg::Vec3& v)
    {
       if(!mTextEntries[textid].valid())
       {
@@ -393,7 +397,7 @@ namespace dtEntity
    }
 
    ////////////////////////////////////////////////////////////////////////////
-   osg::Vec3 TextLabelComponent::GetOffset(unsigned int textid) const
+   osg::Vec3 TextLabelComponent::GetOffset(size_type textid) const
    {
       if(!mTextEntries[textid].valid())
       {
@@ -403,7 +407,7 @@ namespace dtEntity
    }
 
    ////////////////////////////////////////////////////////////////////////////
-   void TextLabelComponent::SetCharacterHeight(unsigned int textid, float v)
+   void TextLabelComponent::SetCharacterHeight(size_type textid, float v)
    {
       if(!mTextEntries[textid].valid())
       {
@@ -418,7 +422,7 @@ namespace dtEntity
    }
 
    ////////////////////////////////////////////////////////////////////////////
-   float TextLabelComponent::GetCharacterHeight(unsigned int textid) const
+   float TextLabelComponent::GetCharacterHeight(size_type textid) const
    {
       if(!mTextEntries[textid].valid())
       {
@@ -428,7 +432,7 @@ namespace dtEntity
    }
 
    ////////////////////////////////////////////////////////////////////////////
-   void TextLabelComponent::SetBackdropColor(unsigned int textid, const osg::Vec4& c)
+   void TextLabelComponent::SetBackdropColor(size_type textid, const osg::Vec4& c)
    {
       if(!mTextEntries[textid].valid())
       {
@@ -443,7 +447,7 @@ namespace dtEntity
    }
 
    ////////////////////////////////////////////////////////////////////////////
-   osg::Vec4 TextLabelComponent::GetBackdropColor(unsigned int textid) const
+   osg::Vec4 TextLabelComponent::GetBackdropColor(size_type textid) const
    {
       if(!mTextEntries[textid].valid())
       {
@@ -454,7 +458,7 @@ namespace dtEntity
 
 
    ////////////////////////////////////////////////////////////////////////////
-   void TextLabelComponent::SetFont(unsigned int textid, const std::string& f)
+   void TextLabelComponent::SetFont(size_type textid, const std::string& f)
    {
       if(!mTextEntries[textid].valid())
       {
@@ -465,13 +469,13 @@ namespace dtEntity
       dtEntity::PropertyArray arr = mTexts.Get();
       assert(arr.size() > textid);
       dtEntity::PropertyGroup props = arr[textid]->GroupValue();
-      assert(props[FontId]->GetType() == dtEntity::DataType::STRING);
+      assert(props[FontId]->GetDataType() == dtEntity::DataType::STRING);
       static_cast<dtEntity::StringProperty*>(props[FontId])->Set(f);
    }
 
 
    ////////////////////////////////////////////////////////////////////////////
-   std::string TextLabelComponent::GetFont(unsigned int textid) const
+   std::string TextLabelComponent::GetFont(size_type textid) const
    {
       if(!mTextEntries[textid].valid())
       {
@@ -481,7 +485,7 @@ namespace dtEntity
    }
 
    ////////////////////////////////////////////////////////////////////////////
-   void TextLabelComponent::SetAlignment(unsigned int textid, const std::string& align)
+   void TextLabelComponent::SetAlignment(size_type textid, const std::string& align)
    {
       if(!mTextEntries[textid].valid())
       {
@@ -552,13 +556,13 @@ namespace dtEntity
       dtEntity::PropertyArray arr = mTexts.Get();
       assert(arr.size() > textid);
       dtEntity::PropertyGroup props = arr[textid]->GroupValue();
-      assert(props[AlignmentId]->GetType() == dtEntity::DataType::STRING);
+      assert(props[AlignmentId]->GetDataType() == dtEntity::DataType::STRING);
       static_cast<dtEntity::StringProperty*>(props[AlignmentId])->Set(align);
    }
 
 
    ////////////////////////////////////////////////////////////////////////////
-   std::string TextLabelComponent::GetAlignment(unsigned int textid) const
+   std::string TextLabelComponent::GetAlignment(size_type textid) const
    {
       if(!mTextEntries[textid].valid())
       {
@@ -591,7 +595,7 @@ namespace dtEntity
    ////////////////////////////////////////////////////////////////////////////
    void TextLabelComponent::SetAlwaysOnTop(bool v)
    { 
-      mAlwaysOnTop.Set(v);
+      mAlwaysOnTopVal = v;
       osg::StateSet* ss = GetNode()->getOrCreateStateSet();
       ss->setMode(GL_DEPTH_TEST, v ? osg::StateAttribute::OFF : osg::StateAttribute::ON);
    }
@@ -604,9 +608,13 @@ namespace dtEntity
    ///////////////
    TextLabelSystem::TextLabelSystem(dtEntity::EntityManager& em)
       : dtEntity::DefaultEntitySystem<TextLabelComponent>(em)
+      , mEnabled(
+           DynamicBoolProperty::SetValueCB(this, &TextLabelSystem::SetEnabled),
+           DynamicBoolProperty::GetValueCB(this, &TextLabelSystem::GetEnabled)
+        )
+      , mEnabledVal(true)
    {
       Register(EnabledId, &mEnabled);
-      mEnabled.Set(true);
 
       AddScriptedMethod("create", dtEntity::ScriptMethodFunctor(this, &TextLabelSystem::ScriptCreate));
       AddScriptedMethod("destroy", dtEntity::ScriptMethodFunctor(this, &TextLabelSystem::ScriptDestroy));
@@ -618,18 +626,16 @@ namespace dtEntity
       AddScriptedMethod("setHighlighted", dtEntity::ScriptMethodFunctor(this, &TextLabelSystem::ScriptSetHighlighted));
    }  
 
-    ////////////////////////////////////////////////////////////////////////////
-   void TextLabelSystem::OnPropertyChanged(dtEntity::StringId propname, dtEntity::Property& prop)
+   ////////////////////////////////////////////////////////////////////////////
+   bool TextLabelSystem::GetEnabled() const
    {
-      if(propname == EnabledId)
-      {
-         SetEnabled(prop.BoolValue());
-      }
+      return mEnabledVal;
    }
 
    ////////////////////////////////////////////////////////////////////////////
    void TextLabelSystem::SetEnabled(bool v)
    {
+      mEnabledVal = v;
       for(ComponentStore::iterator i = mComponents.begin(); i != mComponents.end(); ++i)
       {
          for(unsigned int j = 0; j < i->second->GetNumTexts(); ++j)

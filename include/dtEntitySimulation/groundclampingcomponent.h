@@ -24,7 +24,7 @@
 #include <dtEntity/component.h>
 #include <dtEntity/defaultentitysystem.h>
 #include <dtEntity/message.h>
-#include <dtEntity/property.h>
+#include <dtEntity/dynamicproperty.h>
 #include <dtEntity/scriptaccessor.h>
 #include <osgUtil/IntersectionVisitor>
 #include <osgUtil/LineSegmentIntersector>
@@ -41,6 +41,7 @@ namespace dtEntitySimulation
 
    class GroundClampingComponent : public dtEntity::Component
    {
+      typedef dtEntity::Component BaseClass;
 
    public:
       
@@ -51,6 +52,7 @@ namespace dtEntitySimulation
       static const dtEntity::StringId ClampingMode_SetHeightToTerrainHeightId;
       static const dtEntity::StringId ClampingMode_SetHeightAndRotationToTerrainId;
       static const dtEntity::StringId MinDistToCameraId;
+      static const dtEntity::StringId MinMovementDeltaId;
       static const dtEntity::StringId VerticalOffsetId;
 
       GroundClampingComponent();
@@ -91,6 +93,9 @@ namespace dtEntitySimulation
       void SetMinDistToCamera(float p) { mMinDistToCamera.Set(p); }
       float GetMinDistToCamera() const { return mMinDistToCamera.Get(); }
 
+      void SetMinMovementDelta(float p) { mMinMovementDelta.Set(p); }
+      float GetMinMovementDelta() const { return mMinMovementDelta.Get(); }
+
        void SetDirty(bool v) { mDirty = v; }
       bool GetDirty() const { return mDirty; }
 
@@ -99,6 +104,8 @@ namespace dtEntitySimulation
       dtEntity::StringIdProperty mClampingMode;
       dtEntity::FloatProperty mVerticalOffset;
       dtEntity::FloatProperty mMinDistToCamera;
+      dtEntity::FloatProperty mMinMovementDelta;
+
       dtEntity::TransformComponent* mTransformComponent;
       unsigned int mIntersectIndex;
       dtEntity::Entity* mEntity;
@@ -131,8 +138,6 @@ namespace dtEntitySimulation
       GroundClampingSystem(dtEntity::EntityManager& em);
       ~GroundClampingSystem();
 
-      void OnPropertyChanged(dtEntity::StringId propname, dtEntity::Property &prop);
-
       void OnRemoveFromEntityManager(dtEntity::EntityManager& em);
 
       void Tick(const dtEntity::Message& msg);
@@ -143,11 +148,13 @@ namespace dtEntitySimulation
       bool ClampToTerrain(osg::Vec3d& position, int voffset = 10000);
 
       void SetIntersectLayer(dtEntity::StringId);
-      dtEntity::StringId GetIntersectLayer() const { return  mIntersectLayer.Get(); }
+      dtEntity::StringId GetIntersectLayer() const;
 
 
       virtual bool StorePropertiesToScene() const { return true; }
 
+      void SetEnabled(bool v);
+      bool GetEnabled() const;
    private:
 
       dtEntity::Property* ScriptGetTerrainHeight(const dtEntity::PropertyArgs& args);
@@ -165,8 +172,10 @@ namespace dtEntitySimulation
       osg::observer_ptr<osg::Node> mRootNode;
       osg::ref_ptr<osgUtil::IntersectorGroup> mIntersectorGroup;
 
-      dtEntity::BoolProperty mEnabled;
-      dtEntity::StringIdProperty mIntersectLayer;
+      dtEntity::DynamicBoolProperty mEnabled;
+      bool mEnabledVal;
+      dtEntity::DynamicStringIdProperty mIntersectLayer;
+      dtEntity::StringId mIntersectLayerVal;
       dtEntity::BoolProperty mFetchLODs;
 
       osgSim::LineOfSight mLos;

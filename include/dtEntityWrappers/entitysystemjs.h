@@ -24,6 +24,7 @@
 #include <dtEntity/entitysystem.h>
 #include <dtEntityWrappers/export.h>
 #include <v8.h>
+#include <dtEntity/dtentity_config.h>
 
 namespace dtEntity
 {
@@ -37,6 +38,9 @@ namespace dtEntityWrappers
    class DTENTITY_WRAPPERS_EXPORT ComponentJS
       : public dtEntity::Component
    {
+
+      typedef dtEntity::Component BaseClass;
+
    public:
       ComponentJS(dtEntity::ComponentType componentType, v8::Handle<v8::Object> obj);
       ~ComponentJS();
@@ -52,7 +56,9 @@ namespace dtEntityWrappers
       }
 
       virtual void OnAddedToEntity(dtEntity::Entity& entity);
+#if CALL_ONPROPERTYCHANGED_METHOD
       virtual void OnPropertyChanged(dtEntity::StringId propname, dtEntity::Property& prop);
+#endif
       virtual void Finished();
 
    private:
@@ -82,11 +88,12 @@ namespace dtEntityWrappers
       virtual bool CreateComponent(dtEntity::EntityId eid, dtEntity::Component*& component);
       virtual bool DeleteComponent(dtEntity::EntityId eid);
       virtual void GetEntitiesInSystem(std::list<dtEntity::EntityId>& toFill) const;
-      virtual dtEntity::DynamicPropertyContainer GetComponentProperties() const;
+
+#if CALL_ONPROPERTYCHANGED_METHOD
       virtual void OnPropertyChanged(dtEntity::StringId propnamesid, dtEntity::Property& prop);
+#endif
       virtual void Finished();
-      virtual void GetProperties(PropertyMap& toFill);
-      virtual void GetProperties(ConstPropertyMap& toFill) const;
+      virtual dtEntity::GroupProperty GetProperties() const;
 
       virtual bool StoreComponentToMap(dtEntity::EntityId) const;
       virtual bool AllowComponentCreationBySpawner() const;

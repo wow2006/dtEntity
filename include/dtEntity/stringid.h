@@ -21,12 +21,25 @@
 */
 
 #include <dtEntity/export.h>
-#include <dtEntity/singleton.h>
 #include <dtEntity/entityid.h>
 #include <string>
 
 namespace dtEntity
 {
+
+   // serial ID for strings
+
+   #if DTENTITY_USE_STRINGS_AS_STRINGIDS
+   typedef std::string StringId;
+   #else
+   typedef unsigned int StringId;
+   #endif
+
+   // type id for messages
+   typedef StringId MessageType;
+
+   // type id for components
+   typedef StringId ComponentType;
 
    /**
     * Get a unique StringId for given string. 
@@ -57,5 +70,7 @@ namespace dtEntity
    * get string id crc32 hash of string, add to reverse lookup
    */
    StringId DT_ENTITY_EXPORT SID(unsigned int hash);
+
+   unsigned int SIDToUInt(StringId);
 
 }

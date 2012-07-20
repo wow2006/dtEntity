@@ -41,6 +41,8 @@ namespace dtEntityWrappers
       static const dtEntity::StringId DebugPortId;
       static const dtEntity::StringId DebugEnabledId;
       
+      typedef dtEntity::EntitySystem BaseClass;
+
    public:
 
       static const dtEntity::ComponentType TYPE;
@@ -56,7 +58,6 @@ namespace dtEntityWrappers
       virtual void OnRemoveFromEntityManager(dtEntity::EntityManager& em);
       
       void OnSceneLoaded(const dtEntity::Message& msg);
-      void OnResetSystem(const dtEntity::Message& msg);
       void OnLoadScript(const dtEntity::Message& msg);
       void Tick(const dtEntity::Message& msg);
 
@@ -103,12 +104,14 @@ namespace dtEntityWrappers
       v8::Handle<v8::String> GetEntityIdString() const { return mEntityIdString; }
       v8::Handle<v8::String> GetPropertyNamesString() const { return mPropertyNamesString; }
 
+      v8::Handle<v8::FunctionTemplate> GetTemplateBySID(dtEntity::StringId) const;
+      void SetTemplateBySID(dtEntity::StringId, v8::Handle<v8::FunctionTemplate>);
+
    private:
       void SetupContext();
       void FetchGlobalTickFunction();
       
       dtEntity::MessageFunctor mSceneLoadedFunctor;
-      dtEntity::MessageFunctor mResetSystemFunctor;
       dtEntity::MessageFunctor mTickFunctor;
       dtEntity::MessageFunctor mLoadScriptFunctor;
       
@@ -125,6 +128,10 @@ namespace dtEntityWrappers
       ComponentMap mComponentMap;
       v8::Persistent<v8::String> mEntityIdString;
       v8::Persistent<v8::String> mPropertyNamesString;
+
+      typedef std::map<dtEntity::StringId, v8::Persistent<v8::FunctionTemplate> > TemplateMap;
+      TemplateMap mTemplateMap;
    };
 
 }
+

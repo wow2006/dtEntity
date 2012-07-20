@@ -20,7 +20,6 @@
 * Martin Scheffler
 */
 
-#include <osg/ref_ptr>
 #include <dtEntity/export.h>
 #include <dtEntity/defaultentitysystem.h>
 #include <dtEntity/component.h>
@@ -28,7 +27,6 @@
 #include <dtEntity/groupcomponent.h>
 #include <dtEntity/property.h>
 #include <dtEntity/stringid.h>
-#include <osg/Group>
 
 namespace dtEntity
 {
@@ -61,7 +59,6 @@ namespace dtEntity
 
       virtual ComponentType GetType() const { return TYPE; }
 
-      virtual void OnPropertyChanged(StringId propname, Property &prop);
       virtual void Finished();
 
       // set existing geometry as static mesh
@@ -83,8 +80,8 @@ namespace dtEntity
       bool GetOptimize() const { return mOptimize.Get(); }
       void SetOptimize(bool v) { mOptimize.Set(v); }
 
-      bool GetIsTerrain() const { return mIsTerrain.Get(); }
-      void SetIsTerrain(bool v) { mIsTerrain.Set(v); }
+      bool GetIsTerrain() const { return mIsTerrainVal; }
+      void SetIsTerrain(bool v);
 
    protected:
      
@@ -92,7 +89,8 @@ namespace dtEntity
       StringProperty mMeshPathProperty;
       StringIdProperty mCacheHint;
       BoolProperty mOptimize;
-      BoolProperty mIsTerrain;
+      DynamicBoolProperty mIsTerrain;
+      bool mIsTerrainVal;
       std::string mLoadedMesh;
    };
 
@@ -107,6 +105,7 @@ namespace dtEntity
       static const ComponentType TYPE;
 
       StaticMeshSystem(EntityManager& em);
+      ~StaticMeshSystem();
 
       void OnResourceChanged(const Message& msg);
 
