@@ -23,7 +23,6 @@
 
 #include <cstddef>
 #include <vector>
-#include <queue>
 #include <map>
 #include <string>
 
@@ -114,19 +113,19 @@ namespace dtEntity
        */
       struct BufferData
       {
-         ALuint       buf;
-         const char*  file;
          ALboolean    loop;
-         unsigned int use;
          ALenum       format;
+         ALuint       buf;
+         unsigned int use;
          ALsizei      freq;
          ALsizei      size;
-
+         const char*  file;
+         
          BufferData()
-            : buf(0L)
-            , file("")
-            , loop(AL_FALSE)
+            : loop(AL_FALSE)
+            , buf(0L)
             , use(0L)
+            , file("")
          {}
       };
 

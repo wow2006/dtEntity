@@ -39,7 +39,7 @@ namespace dtEntity
    /**
     * Adds all messages to message factory
 	*/
-	void RegisterCommandMessages(MessageFactory&);
+	void DT_ENTITY_EXPORT RegisterCommandMessages(MessageFactory&);
 
 
    ////////////////////////////////////////////////////////////////////////////////
@@ -279,30 +279,6 @@ namespace dtEntity
 
    ////////////////////////////////////////////////////////////////////////////////
    /**
-    * Cause all maps and scripts to be unloaded
-    */
-   class DT_ENTITY_EXPORT ResetSystemMessage
-      : public Message
-   {
-      static const StringId SceneNameId;
-   public:
-
-      static const MessageType TYPE;
-
-      ResetSystemMessage();
-
-      virtual Message* Clone() const { return CloneContainer<ResetSystemMessage>(); }
-
-      std::string GetSceneName() const { return mSceneName.Get(); }
-      void SetSceneName(const std::string& v){ mSceneName.Set(v); }
-
-   private:
-
-      StringProperty mSceneName;
-   };
-
-   ////////////////////////////////////////////////////////////////////////////////
-   /**
     * Application system reacts to this message by retrieving a component of type t
    * from entity identified by id and applying the property values of mProperty
    * to the component.
@@ -336,8 +312,8 @@ namespace dtEntity
 	  /**
 		* Group of properties that will be applied to entity system
 		*/
-		void SetProperties(PropertyGroup& v) { mProperties.Set(v); }
-		PropertyGroup GetProperties() const { return mProperties.Get(); }
+      void SetComponentProperties(PropertyGroup& v) { mProperties.Set(v); }
+      const PropertyGroup& GetComponentProperties() const { return mProperties.Get(); }
 
    private:
       StringProperty mComponentType;
@@ -374,8 +350,8 @@ namespace dtEntity
 	  /**
 		* Group of properties that will be applied to entity system
 		*/
-		void SetProperties(PropertyGroup& v) { mProperties.Set(v); }
-		PropertyGroup GetProperties() const { return mProperties.Get(); }
+      void SetSystemProperties(PropertyGroup& v) { mProperties.Set(v); }
+      const PropertyGroup& GetSystemProperties() const { return mProperties.Get(); }
 
    private:
       StringProperty mComponentType;

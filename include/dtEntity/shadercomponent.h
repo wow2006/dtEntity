@@ -51,8 +51,6 @@ namespace dtEntity
 
       virtual ComponentType GetType() const { return TYPE; }
 
-      virtual void Finished();
-
       std::string GetMaterialNamePrefix() const { return mMaterialNamePrefix.Get(); }
       void SetMaterialNamePrefix(const std::string& s) { mMaterialNamePrefix.Set(s); }
 
@@ -79,8 +77,7 @@ namespace dtEntity
       static const ComponentType TYPE;
 
       ShaderSystem(EntityManager& em);
-
-      virtual void OnPropertyChanged(StringId propname, Property &prop);
+      ~ShaderSystem();
 
       void AddProgram(const std::string& name, osg::Program* prg);
       osg::Program* GetProgram(const std::string& name) const;

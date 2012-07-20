@@ -21,8 +21,8 @@
 */
 
 #include <dtEntity/export.h>
+#include <dtEntity/property.h>
 #include <dtEntity/stringid.h>
-#include <OpenThreads/Mutex>
 #include <osg/Matrix>
 #include <osg/Vec2>
 #include <osg/Vec3>
@@ -30,6 +30,7 @@
 #include <osg/Quat>
 #include <vector>
 #include <map>
+#include <dtEntity/dtentity_config.h>
 
 namespace dtEntity
 {
@@ -37,58 +38,32 @@ namespace dtEntity
 
    /**
     * Holds a number of properties. This container does NOT take ownership
-    * of properties, they are not deleted in the constructor. If you
-    * want the container to take ownership then use the subclass
-    * DynamicPropertyContainer.
+    * of properties, they are not deleted in the constructor.
     */
-   class DT_ENTITY_EXPORT PropertyContainer
+   class DT_ENTITY_EXPORT PropertyContainer : public GroupProperty
    {
    public:
 
-      typedef std::map<StringId, Property*> PropertyMap;
-      typedef std::map<StringId, const Property*> ConstPropertyMap;
-
       PropertyContainer() {}
 
-      virtual ~PropertyContainer() {}
+      virtual ~PropertyContainer() 
+      {
+         // don't delete properties, they are not on heap
+         mValue.clear();
+      }
       
-      /**
-       * Return true if no properties are registered with container
-       */
-      bool Empty() const;
-
-      /**
-       * Get property registered under this string id
-       * @return The property, NULL if not found
-       */
-      const Property* Get(StringId name)  const;
-
-      /**
-       * Get property registered under this string id
-       * @return The property, NULL if not found
-       */
-      Property* Get(StringId name);
-
-      /**
-       * Get a list with all properties registered in this container
-       */
-      virtual void GetProperties(PropertyMap& toFill);
-      virtual void GetProperties(ConstPropertyMap& toFill) const;
-
-      const PropertyMap& GetAllProperties() const { return mProperties; }
-
-
-      /**
-       * @return true if a property was registered with this string id
-       */
-      bool Has(StringId name) const;
-
+#if CALL_ONPROPERTYCHANGED_METHOD == 0
+      // hide when compiling with new property system
+   private:
+#endif
       /**
        * Can be overridden to react to changes of properties.
        * Should be called by user when changing a property on the
        * PropertyContainer.
        */
       virtual void OnPropertyChanged(StringId propname, Property& prop) {}
+
+   public:
 
       /**
        * should be called when a set of interdependent
@@ -120,17 +95,17 @@ namespace dtEntity
       void SetFloat(StringId name, float val);
       void SetGroup(StringId name, const std::map<StringId, Property*>& val);
       void SetInt(StringId name, int val);
-      void SetMatrix(StringId name, const osg::Matrix& val);
-      void SetQuat(StringId name, const osg::Quat& val);
+      void SetMatrix(StringId name, const Matrix& val);
+      void SetQuat(StringId name, const Quat& val);
       void SetString(StringId name, const std::string& val);
       void SetStringId(StringId name, StringId val);
       void SetUInt(StringId name, unsigned int val);
-      void SetVec2(StringId name, const osg::Vec2f& val);
-      void SetVec3(StringId name, const osg::Vec3f& val);
-      void SetVec4(StringId name, const osg::Vec4f& val); 
-      void SetVec2d(StringId name, const osg::Vec2d& val);
-      void SetVec3d(StringId name, const osg::Vec3d& val);
-      void SetVec4d(StringId name, const osg::Vec4d& val); 
+      void SetVec2(StringId name, const Vec2f& val);
+      void SetVec3(StringId name, const Vec3f& val);
+      void SetVec4(StringId name, const Vec4f& val); 
+      void SetVec2d(StringId name, const Vec2d& val);
+      void SetVec3d(StringId name, const Vec3d& val);
+      void SetVec4d(StringId name, const Vec4d& val); 
 
       /**
        * Return value of property registered with given string id
@@ -141,17 +116,17 @@ namespace dtEntity
       float GetFloat(StringId name) const;
       std::map<StringId, Property*> GetGroup(StringId name) const;
       int GetInt(StringId name) const;
-      osg::Matrix GetMatrix(StringId name) const;
-      osg::Quat GetQuat(StringId name) const;
+      Matrix GetMatrix(StringId name) const;
+      Quat GetQuat(StringId name) const;
       std::string GetString(StringId name) const;
       StringId GetStringId(StringId name) const;
       unsigned int GetUInt(StringId name) const;
-      osg::Vec2f GetVec2(StringId name) const;
-      osg::Vec3f GetVec3(StringId name) const;
-      osg::Vec4f GetVec4(StringId name) const;      
-      osg::Vec2d GetVec2d(StringId name) const;
-      osg::Vec3d GetVec3d(StringId name) const;
-      osg::Vec4d GetVec4d(StringId name) const; 
+      Vec2f GetVec2(StringId name) const;
+      Vec3f GetVec3(StringId name) const;
+      Vec4f GetVec4(StringId name) const;      
+      Vec2d GetVec2d(StringId name) const;
+      Vec3d GetVec3d(StringId name) const;
+      Vec4d GetVec4d(StringId name) const; 
 
    protected:
       
@@ -159,11 +134,6 @@ namespace dtEntity
        * Register a property under the given string id
        */
       void Register(StringId name, Property* prop);
-
-	  /**
-	   * storage for the properties
-	   */
-      PropertyMap mProperties;
       
    private:
 
@@ -178,38 +148,5 @@ namespace dtEntity
       ret->InitFrom(*this);
       return ret;
    }
-
-   ////////////////////////////////////////////////////////////////////////////////
-
-    
-   /**
-    * A less encapsulated subclass of PropertyContainer.
-	* Public methods to add properties.
-   * Takes ownership of properties: All properties added to this
-   * container are deleted in the destructor.
-	*/
-   class DT_ENTITY_EXPORT DynamicPropertyContainer
-      : public PropertyContainer
-   {
-   public:
-      DynamicPropertyContainer();
-      virtual ~DynamicPropertyContainer();
-
-      DynamicPropertyContainer(const DynamicPropertyContainer& other);
-
-      void operator=(const DynamicPropertyContainer&);
-
-      // add props of other to this, overwriting existing values
-      DynamicPropertyContainer& operator+=(const DynamicPropertyContainer& other);
-
-      void SetProperties(const ConstPropertyMap& props);
-
-	  // Add a clone of property to container. 
-      void AddProperty(StringId name, const Property&);
-      
-	  // Remove and delete property from container.
-	  // @return true if property was found in container, else false
-	  bool DeleteProperty(StringId name);
-   };
 
 }

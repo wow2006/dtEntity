@@ -23,7 +23,6 @@
 */
 #include <osgDB/FileUtils>
 #include <dtEntity/applicationcomponent.h>
-#include <dtEntity/basemessages.h>
 #include <dtEntity/component.h>
 #include <dtEntity/layerattachpointcomponent.h>
 #include <dtEntity/defaultentitysystem.h>
@@ -31,10 +30,13 @@
 #include <dtEntity/entitymanager.h>
 #include <dtEntity/initosgviewer.h>
 #include <dtEntity/mapcomponent.h>
+#include <dtEntity/core.h>
+#include <dtEntity/osgsysteminterface.h>
 #include <dtEntity/positionattitudetransformcomponent.h>
 #include <dtEntity/skyboxcomponent.h>
 #include <dtEntity/spawner.h>
 #include <dtEntity/stringid.h>
+#include <dtEntity/systemmessages.h>
 #include <osgGA/TrackballManipulator>
 #include <osgViewer/CompositeViewer>
 #include <osgViewer/ViewerEventHandlers>
@@ -264,11 +266,6 @@ int main(int argc, char** argv)
    
    osg::Group* root = new osg::Group();
 
-   osg::Sphere* sphere = new osg::Sphere(osg::Vec3(), 5);
-   osg::ShapeDrawable* drawable = new osg::ShapeDrawable(sphere);
-   osg::Geode* geode = new osg::Geode();
-   geode->addDrawable(drawable);
-   root->addChild(geode);
    if(!dtEntity::InitOSGViewer(argc, argv, viewer, em, true, true, true, root))
    {
       LOG_ERROR("Error setting up dtEntity!");
@@ -337,11 +334,12 @@ int main(int argc, char** argv)
       lastEntity = spawned->GetId();      
    }
 
+   dtEntity::OSGSystemInterface* iface = static_cast<dtEntity::OSGSystemInterface*>(dtEntity::GetSystemInterface());
 
    // skybox screws up OSG initial position, set manually
-   appsys->GetPrimaryView()->setCameraManipulator(new osgGA::TrackballManipulator());
-   appsys->GetPrimaryView()->getCameraManipulator()->setHomePosition(osg::Vec3(0, -50, 5), osg::Vec3(), osg::Vec3(0,0,1),false);
-   appsys->GetPrimaryView()->getCameraManipulator()->home(0);
+   iface->GetPrimaryView()->setCameraManipulator(new osgGA::TrackballManipulator());
+   iface->GetPrimaryView()->getCameraManipulator()->setHomePosition(osg::Vec3(0, -50, 5), osg::Vec3(), osg::Vec3(0,0,1),false);
+   iface->GetPrimaryView()->getCameraManipulator()->home(0);
 
    while (!viewer.done())
    {

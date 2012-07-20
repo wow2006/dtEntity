@@ -22,9 +22,10 @@
 
 #include <assert.h>
 #include <dtEntity/applicationcomponent.h>
-#include <dtEntity/basemessages.h>
 #include <dtEntity/cameracomponent.h>
 #include <dtEntity/componentpluginmanager.h>
+#include <dtEntity/core.h>
+#include <dtEntity/osgsysteminterface.h>
 #include <dtEntity/entity.h>
 #include <dtEntity/entitymanager.h>
 #include <dtEntity/initosgviewer.h>
@@ -64,7 +65,7 @@ namespace dtEntityEditor
       , mTimeScale(1)
       , mFileSystemWatcher(new QFileSystemWatcher())
    {
-
+      dtEntity::SetSystemInterface(new dtEntity::OSGSystemInterface());
       dtEntity::LogManager::GetInstance().AddListener(new dtEntity::ConsoleLogHandler());
       
       dtEntity::SetupDataPaths(argc,argv, false);
@@ -91,7 +92,7 @@ namespace dtEntityEditor
          }      
       }
 
-      for(unsigned int i = 0; i < oldpaths.size(); ++i)
+      for(osgDB::FilePathList::size_type i = 0; i < oldpaths.size(); ++i)
       {
          if(std::find(newpaths.begin(), newpaths.end(), oldpaths[i]) == newpaths.end() && 
             QFile::exists(oldpaths[i].c_str()))
@@ -103,7 +104,7 @@ namespace dtEntityEditor
       osgDB::setDataFilePathList(newpaths);
 
       QStringList newpathsqt;
-      for(unsigned int i = 0; i < newpaths.size(); ++i)
+      for(osgDB::FilePathList::size_type i = 0; i < newpaths.size(); ++i)
       {
          newpathsqt.push_back(newpaths[i].c_str());
       }
@@ -168,9 +169,9 @@ namespace dtEntityEditor
       assert(mMainWindow != NULL);
 
       // give application system access to viewer
-      dtEntity::ApplicationSystem* appsystem;
-      GetEntityManager().GetEntitySystem(dtEntity::ApplicationSystem::TYPE, appsystem);
-      appsystem->SetViewer(mViewer);
+      dtEntity::OSGSystemInterface* iface = static_cast<dtEntity::OSGSystemInterface*>(dtEntity::GetSystemInterface());
+      iface->SetViewer(mViewer);
+
 
       bool success = dtEntity::DoScreenSetup(0, NULL, *mViewer, GetEntityManager());
       if(!success)
@@ -218,7 +219,7 @@ namespace dtEntityEditor
          connect(this, SIGNAL(ErrorOccurred(const QString&)),
                  mMainWindow, SLOT(OnDisplayError(const QString&)));
 
-         for(unsigned int i = 0; i < mPluginPaths.size(); ++i) 
+         for(std::vector<std::string>::size_type i = 0; i < mPluginPaths.size(); ++i)
          {
             LOG_DEBUG("Looking for plugins in directory " + mPluginPaths[i]);
             // load and start all entity systems in plugins
@@ -347,7 +348,7 @@ namespace dtEntityEditor
 
       double vfov, aspectRatio, nearClip, farClip;
       cams.front()->getProjectionMatrixAsPerspective(vfov, aspectRatio, nearClip, farClip);
-      cams.front()->setProjectionMatrixAsPerspective(vfov, (double)size.width() / (double) size.height(), nearClip, farClip);
+      cams.front()->setProjectionMatrixAsPerspective(vfov, static_cast<double>(size.width()) / static_cast<double>(size.height()), nearClip, farClip);
    }
 
    ////////////////////////////////////////////////////////////////////////////////
@@ -392,13 +393,11 @@ namespace dtEntityEditor
          }
 
          // create a main camera entity if it was not loaded from map
-         dtEntity::ApplicationSystem* appsys;
-         GetEntityManager().GetEntitySystem(dtEntity::ApplicationSystem::TYPE, appsys);
 
          dtEntity::Entity* entity;
          mEntityManager->CreateEntity(entity);
-
-         unsigned int contextId = appsys->GetPrimaryWindow()->getState()->getContextID();
+         dtEntity::OSGSystemInterface* iface = static_cast<dtEntity::OSGSystemInterface*>(dtEntity::GetSystemInterface());
+         unsigned int contextId = iface->GetPrimaryWindow()->getState()->getContextID();
          dtEntity::CameraComponent* camcomp;
          entity->CreateComponent(camcomp);
          camcomp->SetContextId(contextId);

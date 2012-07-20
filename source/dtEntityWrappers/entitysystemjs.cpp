@@ -19,9 +19,13 @@
 */
 
 #include <dtEntityWrappers/entitysystemjs.h>
+
+#include <dtEntity/dtentity_config.h>
 #include <dtEntity/log.h>
 #include <dtEntity/property.h>
+#include <dtEntityWrappers/jsproperty.h>
 #include <dtEntityWrappers/propertyconverter.h>
+#include <dtEntityWrappers/scriptcomponent.h>
 #include <dtEntityWrappers/v8helpers.h>
 #include <dtEntityWrappers/wrappers.h>
 #include <iostream>
@@ -66,6 +70,8 @@ namespace dtEntityWrappers
    {
 
       HandleScope scope;
+
+
       Handle<Array> propnames = obj->GetPropertyNames();
 
       V8::AdjustAmountOfExternalAllocatedMemory(sizeof(ComponentJS));
@@ -86,22 +92,54 @@ namespace dtEntityWrappers
          Handle<Value> val = obj->Get(propname);
 
          // don't convert functions to component properties
-         if(!val->IsFunction())
+         if(val->IsFunction())
          {
+#if CALL_ONPROPERTYCHANGED_METHOD == 0
+            if(propname_str == "onPropertyChanged")
+            {
+               LOG_ERROR("onPropertyChanged method is no longer called when a propery is changed!");
+            }
+#endif
+         }
+         else
+         {
+#if CALL_ONPROPERTYCHANGED_METHOD == 0
+            // handle properties created with createProperty* functions
+            Handle<Value> hidden = obj->GetHiddenValue(propname);
+            if(!hidden.IsEmpty())
+            {
+
+
+               Handle<External> ext = Handle<External>::Cast(hidden);
+               void* ptr = ext->Value();
+               PropertyGetterSetter* prop = reinterpret_cast<PropertyGetterSetter*>(ptr);
+
+               dtEntity::PropertyGroup::iterator j = mValue.find(propname_sid);
+               if(j != mValue.end())
+               {
+                 delete j->second;
+                 mValue.erase(j);
+               }
+               mValue[propname_sid] = prop;
+
+            }
+#else
+
             dtEntity::Property* prop = ConvertValueToProperty(val);
             if(prop)
             {
-               PropertyMap::iterator j = mProperties.find(propname_sid);
-               if(j != mProperties.end())
+               dtEntity::PropertyGroup::iterator j = mValue.find(propname_sid);
+               if(j != mValue.end())
                {
-		           delete j->second;
-                 mProperties.erase(j);
-	            }        
-               mProperties[propname_sid] = prop;     
-            }      
-            
+                 delete j->second;
+                 mValue.erase(j);
+               }
+               mValue[propname_sid] =  prop;
+            }
+
             Handle<External> ext = v8::External::New(static_cast<void*>(this));
             obj->SetAccessor(propname, PropertyGetter, PropertySetter, ext);
+#endif
          }
       }
    }
@@ -110,7 +148,7 @@ namespace dtEntityWrappers
    ComponentJS::~ComponentJS()
    {
       V8::AdjustAmountOfExternalAllocatedMemory(-(int)sizeof(ComponentJS));
-      for(PropertyMap::iterator i = mProperties.begin(); i != mProperties.end(); ++i)
+      for(dtEntity::PropertyGroup::iterator i = mValue.begin(); i != mValue.end(); ++i)
       {
          delete i->second;
       }
@@ -121,6 +159,7 @@ namespace dtEntityWrappers
    {
    }
 
+#if CALL_ONPROPERTYCHANGED_METHOD
    ////////////////////////////////////////////////////////////////////////////////
    void ComponentJS::OnPropertyChanged(dtEntity::StringId propnamesid, dtEntity::Property& prop)
    {
@@ -145,10 +184,11 @@ namespace dtEntityWrappers
          }
       }      
    }
-
+#endif
    ////////////////////////////////////////////////////////////////////////////////
    void ComponentJS::Finished()
    {
+      BaseClass::Finished();
       HandleScope scope;
 
       Handle<String> strfin = String::New("finished");
@@ -249,6 +289,7 @@ namespace dtEntityWrappers
       mStringAllowComponentCreationBySpawner = Persistent<String>::New(String::New("allowComponentCreationBySpawner"));
       mStringStorePropertiesToScene = Persistent<String>::New(String::New("storePropertiesToScene"));
 
+
       Handle<Array> propnames = obj->GetPropertyNames();
       // loop through all properties of object
       for(unsigned int i = 0; i < propnames->Length(); ++i)
@@ -266,21 +307,42 @@ namespace dtEntityWrappers
          //don't convert functions to entity system properties, only primitive values
          if(!val->IsFunction())
          {
+#if CALL_ONPROPERTYCHANGED_METHOD == 0
+            // handle properties created with createProperty* functions
+            Handle<Value> hidden = obj->GetHiddenValue(propname);
+            if(!hidden.IsEmpty())
+            {
+               void* ptr = Handle<External>::Cast(hidden)->Value();
+               PropertyGetterSetter* prop = reinterpret_cast<PropertyGetterSetter*>(ptr);
+
+               dtEntity::PropertyGroup::iterator j = mValue.find(propname_sid);
+               if(j != mValue.end())
+               {
+                 delete j->second;
+                 mValue.erase(j);
+               }
+               mValue[propname_sid] = prop;
+
+            }
+#else
             dtEntity::Property* prop = ConvertValueToProperty(val);
             if(prop)
             {
-               PropertyMap::iterator j = mProperties.find(propname_sid);
-               if(j != mProperties.end())
+               dtEntity::PropertyGroup::iterator j = mValue.find(propname_sid);
+               if(j != mValue.end())
                {
-		           delete j->second;
-                 mProperties.erase(j);
-	            }        
-               mProperties[propname_sid] = prop;     
-            }         
+                 delete j->second;
+                 mValue.erase(j);
+               }
+               mValue[propname_sid] = prop;
+
+            }
+#endif
          }
       }
    }
 
+#if CALL_ONPROPERTYCHANGED_METHOD
    ////////////////////////////////////////////////////////////////////////////////
    void EntitySystemJS::OnPropertyChanged(dtEntity::StringId propnamesid, dtEntity::Property& prop)
    {
@@ -308,10 +370,12 @@ namespace dtEntityWrappers
          }
       }      
    }
+#endif
 
    ////////////////////////////////////////////////////////////////////////////////
    void EntitySystemJS::Finished()
    {
+      BaseClass::Finished();
       HandleScope scope;
 
       Handle<Value> cb = mSystem->Get(mStringFinished);
@@ -510,29 +574,9 @@ namespace dtEntityWrappers
    }
 
    ////////////////////////////////////////////////////////////////////////////////
-   dtEntity::DynamicPropertyContainer EntitySystemJS::GetComponentProperties() const
+   dtEntity::GroupProperty EntitySystemJS::GetProperties() const
    {
-      
-      dtEntity::Component* comp;
-      bool success = const_cast<EntitySystemJS*>(this)->CreateComponent(0, comp);
-      if(!success)
-      {
-         LOG_ERROR("Cannot instantiate javascript component of type " << dtEntity::GetStringFromSID(GetComponentType()));
-         dtEntity::DynamicPropertyContainer c;
-         return c;
-      }
-      ConstPropertyMap m;
-      comp->GetProperties(m);
-      dtEntity::DynamicPropertyContainer c;
-      c.SetProperties(m);
-      const_cast<EntitySystemJS*>(this)->DeleteComponent(0);
-      return c;
-      
-   }
-
-   ////////////////////////////////////////////////////////////////////////////////
-   void EntitySystemJS::GetProperties(PropertyMap& toFill)
-   {
+      dtEntity::GroupProperty ret;
       HandleScope scope;
       Context::Scope context_scope(mSystem->CreationContext());
       Handle<Array> propnames = mSystem->GetPropertyNames();
@@ -551,47 +595,15 @@ namespace dtEntityWrappers
          dtEntity::Property* prop = ConvertValueToProperty(val);
          if(prop)
          {
-            PropertyMap::iterator j = mProperties.find(propname_sid);
-            if(j != mProperties.end())
+            dtEntity::PropertyGroup::const_iterator j = mValue.find(propname_sid);
+            if(j != mValue.end())
             {
-		        j->second->SetFrom(*prop);
-              toFill[propname_sid] = j->second;
-	         }        
-            delete prop;
-         }         
-      }
-   }
-
-   ////////////////////////////////////////////////////////////////////////////////
-   void EntitySystemJS::GetProperties(ConstPropertyMap& toFill) const
-   {
-      HandleScope scope;
-      Context::Scope context_scope(mSystem->CreationContext());
-      Handle<Array> propnames = mSystem->GetPropertyNames();
-      // loop through all properties of object
-      for(unsigned int i = 0; i < propnames->Length(); ++i)
-      {
-         Handle<Value> p = propnames->Get(Integer::New(i));
-         Handle<String> propname = Handle<String>::Cast(p);
-         std::string propname_str = ToStdString(propname);
-         if(propname_str == "componentType")
-         {
-            continue;
+              j->second->SetFrom(*prop);
+              ret.Add(propname_sid, j->second->Clone());
+            }
          }
-         dtEntity::StringId propname_sid = dtEntity::SIDHash(propname_str);
-         Handle<Value> val = mSystem->Get(propname);
-         dtEntity::Property* prop = ConvertValueToProperty(val);
-         if(prop)
-         {
-            PropertyMap::const_iterator j = mProperties.find(propname_sid);
-            if(j != mProperties.end())
-            {
-		        j->second->SetFrom(*prop);
-              toFill[propname_sid] = j->second;
-	         }        
-            delete prop;
-         }         
       }
+      return ret;
    }
 
    ////////////////////////////////////////////////////////////////////////////////

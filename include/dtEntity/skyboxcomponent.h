@@ -51,9 +51,9 @@ namespace dtEntity
       SkyBoxComponent();
       virtual ~SkyBoxComponent();
 
-      virtual ComponentType GetType() const { return TYPE; }
+      virtual void Finished();
 
-      virtual void OnPropertyChanged(StringId propname, Property& prop);
+      virtual ComponentType GetType() const { return TYPE; }
 
       virtual osg::Group* GetAttachmentGroup() const { return mDrawables; }
    

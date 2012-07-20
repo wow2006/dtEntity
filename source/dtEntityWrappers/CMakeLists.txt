@@ -2,12 +2,6 @@ SET(LIB_NAME dtEntityWrappers)
 
 FIND_PACKAGE(V8 REQUIRED)
 
-
-IF(BUILD_CEGUI)
-	FIND_PACKAGE(CEGUI REQUIRED)
-  INCLUDE_DIRECTORIES(${CEGUI_INCLUDE_DIR})
-ENDIF(BUILD_CEGUI)
-
 INCLUDE_DIRECTORIES( 
   ${CMAKE_CURRENT_SOURCE_DIR}/../../include/
   ${OSG_INCLUDE_DIR}
@@ -28,6 +22,7 @@ SET(LIB_PUBLIC_HEADERS
 	${HEADER_PATH}/file.h
 	${HEADER_PATH}/globalfunctions.h
 	${HEADER_PATH}/inputhandlerwrapper.h
+  ${HEADER_PATH}/jsproperty.h
 	${HEADER_PATH}/loggerwrapper.h
 	${HEADER_PATH}/mapsystemwrapper.h
 	${HEADER_PATH}/messages.h
@@ -49,7 +44,8 @@ SET(LIB_SOURCES
 	file.cpp
 	globalfunctions.cpp
 	inputhandlerwrapper.cpp	
-    loggerwrapper.cpp
+  jsproperty.cpp
+  loggerwrapper.cpp
 	mapsystemwrapper.cpp
 	propertyconverter.cpp
 	screenwrapper.cpp
@@ -69,14 +65,6 @@ SET(WRAPLIBRARIES dtEntity
                   ${OPENTHREADS_LIBRARIES}
 )
 
-IF(BUILD_CEGUI)
-	LIST(APPEND WRAPLIBRARIES ${CEGUI_LIBRARIES})
-	LIST(APPEND LIB_PUBLIC_HEADERS ${HEADER_PATH}/guiwidgetwrapper.h
-								   ${HEADER_PATH}/guiwrapper.h)
-	LIST(APPEND LIB_SOURCES		   guiwidgetwrapper.cpp
-								   guiwrapper.cpp)
-	
-ENDIF(BUILD_CEGUI)
 
 IF(BUILD_CAL3D)
 	LIST(APPEND LIB_PUBLIC_HEADERS ${HEADER_PATH}/animationsystemwrapper.h)

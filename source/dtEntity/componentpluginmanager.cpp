@@ -57,19 +57,25 @@ namespace dtEntity
    ////////////////////////////////////////////////////////////////////////////////
    ComponentPluginManager::~ComponentPluginManager()
    {
+      for(PluginFactoryMap::iterator i = mFactories.begin(); i != mFactories.end(); ++i)
+      {
+         delete i->second;
+      }
    }
 
    ////////////////////////////////////////////////////////////////////////////////
-   void ComponentPluginManager::AddFactory(ComponentPluginFactory* factory)
+   bool ComponentPluginManager::AddFactory(ComponentPluginFactory* factory)
    {
       ComponentType ctype = dtEntity::SID(factory->GetName());
       if(ctype == StringId() || mFactories.find(ctype) != mFactories.end())
       {
          LOG_ERROR("Factory already registered with type " << factory->GetName());
+         return false;
       }
       else
       {
          mFactories[ctype] = factory;
+         return true;
       }
    }
 
@@ -206,7 +212,7 @@ namespace dtEntity
          mLoadedPlugins[libName] = saveWithScene;
       }
 
-      std::list<osg::ref_ptr<ComponentPluginFactory> > factories;
+      std::list<ComponentPluginFactory*> factories;
       LoadPluginFactories(libName, abspath, factories);
 
       if(factories.empty())
@@ -215,11 +221,11 @@ namespace dtEntity
       }
       else
       {
-         std::list<osg::ref_ptr<ComponentPluginFactory> >::iterator i;
+         std::list<ComponentPluginFactory*>::iterator i;
          for(i = factories.begin(); i != factories.end(); ++i)
          {
-            osg::ref_ptr<ComponentPluginFactory> factory = *i;
-            assert(factory.valid());
+            ComponentPluginFactory* factory = *i;
+            assert(factory != NULL);
 
             ComponentType ctype = dtEntity::SID(factory->GetName());
 
@@ -236,7 +242,7 @@ namespace dtEntity
    }
 
    ////////////////////////////////////////////////////////////////////////////////
-   void ComponentPluginManager::LoadPluginFactories(const std::string& pluginName, const std::string& path, std::list<osg::ref_ptr<ComponentPluginFactory> >& factories)
+   void ComponentPluginManager::LoadPluginFactories(const std::string& pluginName, const std::string& path, std::list<ComponentPluginFactory*>& factories)
    {
       // use library sharing manager to do the actual library loading
 
@@ -250,7 +256,7 @@ namespace dtEntity
 
       if (messagesaddr)
       {
-         RegisterMessagesFn fn = (RegisterMessagesFn) messagesaddr;
+         RegisterMessagesFn fn = reinterpret_cast<RegisterMessagesFn>(messagesaddr);
 
          // let plugin create its factories
          fn(MessageFactory::GetInstance());
@@ -263,7 +269,7 @@ namespace dtEntity
       //have been exported.
       if (pluginaddr)
       {
-         CreatePluginFactoriesFn fn = (CreatePluginFactoriesFn) pluginaddr;
+         CreatePluginFactoriesFn fn = reinterpret_cast<CreatePluginFactoriesFn>(pluginaddr);
 
          std::list<ComponentPluginFactory*> faclist;
          // let plugin create its factories
@@ -276,7 +282,7 @@ namespace dtEntity
             std::list<ComponentPluginFactory*>::iterator i;
             for(i = faclist.begin(); i != faclist.end(); ++i)
             {
-               osg::ref_ptr<ComponentPluginFactory> factory = *i;
+               ComponentPluginFactory* factory = *i;
                factory->SetLibrary(dynlib);
 
                // cannot cleanly unload library yet
@@ -380,6 +386,10 @@ namespace dtEntity
             if(es == NULL || !em.RemoveEntitySystem(*es))
             {
                LOG_ERROR("Could not cleanly remove entity system " << GetStringFromSID(ctype));
+            }
+            else
+            {
+               delete es;
             }
          }
       }

@@ -1,5 +1,5 @@
 /* -*-c++-*-
-* testDebugDrawManager - testDebugDrawManager(.h & .cpp) - Using 'The MIT License'
+* testWheels - testWheels(.h & .cpp) - Using 'The MIT License'
 *
 * Permission is hereby granted, free of charge, to any person obtaining a copy
 * of this software and associated documentation files (the "Software"), to deal
@@ -22,7 +22,6 @@
 * Martin Scheffler
 */
 #include <dtEntity/applicationcomponent.h>
-#include <dtEntity/basemessages.h>
 #include <dtEntity/component.h>
 #include <dtEntity/initosgviewer.h>
 #include <dtEntity/defaultentitysystem.h>
@@ -32,6 +31,7 @@
 #include <dtEntity/spawner.h>
 #include <dtEntity/stringid.h>
 #include <dtEntity/staticmeshcomponent.h>
+#include <dtEntity/systemmessages.h>
 #include <dtEntity/windowmanager.h>
 #include <dtEntityPhysX/pagedterraincullvisitor.h>
 #include <dtEntityPhysX/physxcomponent.h>
@@ -157,7 +157,7 @@ public:
       for(PropertyArray::iterator i = props.begin(); i != props.end(); ++i)
       {
          Property* prop = *i;
-         assert(prop->GetType() == DataType::GROUP);
+         assert(prop->GetDataType() == DataType::GROUP);
          PropertyGroup pg = prop->GroupValue();
          assert(pg.find(SID("NodeName")) != pg.end());
          assert(pg.find(SID("Radius")) != pg.end());

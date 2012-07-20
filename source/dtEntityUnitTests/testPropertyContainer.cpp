@@ -102,13 +102,3 @@ TEST(PropertyContainerString)
    container.SetString(sid, v);
    CHECK_EQUAL(container.GetString(sid), v);
 }
-
-TEST(PropertyGetProperties)
-{
-   
-   MyPropertyContainer container;  
-   PropertyContainer::ConstPropertyMap toFill;
-   container.GetProperties(toFill);
-   CHECK_EQUAL(toFill.size(), (unsigned int)6);
-}
-

@@ -21,18 +21,16 @@
 #include <dtEntitySimulation/groundclampingcomponent.h>
 
 #include <dtEntity/cameracomponent.h>
-#include <dtEntity/basemessages.h>
 #include <dtEntity/entity.h>
 #include <dtEntity/layerattachpointcomponent.h>
 #include <dtEntity/nodemasks.h>
 #include <dtEntity/layercomponent.h>
 #include <dtEntity/mapcomponent.h>
 #include <dtEntity/stringid.h>
+#include <dtEntity/systemmessages.h>
 #include <iostream>
 #include <osg/io_utils>
 #include <osgSim/LineOfSight>
-
-#define MINIMUM_MOVEMENT_DISTANCE 0.2
 
 namespace dtEntitySimulation
 {
@@ -48,6 +46,7 @@ namespace dtEntitySimulation
       dtEntity::SID("SetHeightAndRotationToTerrain"));
    const dtEntity::StringId GroundClampingComponent::VerticalOffsetId(dtEntity::SID("VerticalOffset"));
    const dtEntity::StringId GroundClampingComponent::MinDistToCameraId(dtEntity::SID("MinDistToCamera"));
+   const dtEntity::StringId GroundClampingComponent::MinMovementDeltaId(dtEntity::SID("MinMovementDelta"));
 
    ////////////////////////////////////////////////////////////////////////////
    GroundClampingComponent::GroundClampingComponent()
@@ -59,8 +58,10 @@ namespace dtEntitySimulation
       Register(ClampingModeId, &mClampingMode);
       Register(VerticalOffsetId, &mVerticalOffset);
       Register(MinDistToCameraId, &mMinDistToCamera);
+      Register(MinMovementDeltaId, &mMinMovementDelta);
 
       mMinDistToCamera.Set(500);
+      mMinMovementDelta.Set(0.2f);
       
    }
     
@@ -78,6 +79,7 @@ namespace dtEntitySimulation
    ////////////////////////////////////////////////////////////////////////////
    void GroundClampingComponent::Finished()
    {
+      BaseClass::Finished();
       assert(mEntity != NULL);
       bool success = mEntity->GetEntityManager().GetComponent(mEntity->GetId(), mTransformComponent, true);
       if(!success)
@@ -99,13 +101,21 @@ namespace dtEntitySimulation
       : BaseClass(em)
       , mRootNode(NULL)
       , mIntersectorGroup(new osgUtil::IntersectorGroup())
+      , mEnabled(
+           dtEntity::DynamicBoolProperty::SetValueCB(this, &GroundClampingSystem::SetEnabled),
+           dtEntity::DynamicBoolProperty::GetValueCB(this, &GroundClampingSystem::GetEnabled)
+        )
+      , mEnabledVal(true)
+      , mIntersectLayer(
+           dtEntity::DynamicStringIdProperty::SetValueCB(this, &GroundClampingSystem::SetIntersectLayer),
+           dtEntity::DynamicStringIdProperty::GetValueCB(this, &GroundClampingSystem::GetIntersectLayer)
+        )
       , mCamera(NULL)
    {
 
       Register(EnabledId, &mEnabled);
       Register(IntersectLayerId, &mIntersectLayer);
       Register(FetchLODsId, &mFetchLODs);
-      mEnabled.Set(true);
       mFetchLODs.Set(true);
 
       mTickFunctor = dtEntity::MessageFunctor(this, &GroundClampingSystem::Tick);
@@ -156,16 +166,19 @@ namespace dtEntitySimulation
    }
 
    ////////////////////////////////////////////////////////////////////////////
-   void GroundClampingSystem::OnPropertyChanged(dtEntity::StringId propname, dtEntity::Property &prop)
+   void GroundClampingSystem::SetEnabled(bool v)
    {
-      if(propname == IntersectLayerId)
-      {
-         SetIntersectLayer(prop.StringIdValue());
-      }
-      else if(propname == EnabledId && prop.BoolValue() == true)
+      mEnabledVal = v;
+      if(v)
       {
          DirtyAll();
       }
+   }
+
+   ////////////////////////////////////////////////////////////////////////////
+   bool GroundClampingSystem::GetEnabled() const
+   {
+      return mEnabledVal;
    }
 
    ////////////////////////////////////////////////////////////////////////////
@@ -189,9 +202,15 @@ namespace dtEntitySimulation
    }
 
    ////////////////////////////////////////////////////////////////////////////
+   dtEntity::StringId GroundClampingSystem::GetIntersectLayer() const
+   {
+      return mIntersectLayerVal;
+   }
+
+   ////////////////////////////////////////////////////////////////////////////
    void GroundClampingSystem::SetIntersectLayer(dtEntity::StringId layername)
    {
-      mIntersectLayer.Set(layername);
+      mIntersectLayerVal = layername;
       dtEntity::LayerAttachPointSystem* layersys;
       GetEntityManager().GetEntitySystem(dtEntity::LayerAttachPointComponent::TYPE, layersys);
       dtEntity::LayerAttachPointComponent* c;
@@ -332,8 +351,8 @@ namespace dtEntitySimulation
          // if only moved a little: Set height to last clamp height to override other
          // height modifiers
          if(!component->GetDirty() &&
-            fabs(distMovedX) < MINIMUM_MOVEMENT_DISTANCE &&
-            fabs(distMovedY) < MINIMUM_MOVEMENT_DISTANCE
+            fabs(distMovedX) < component->GetMinMovementDelta() &&
+            fabs(distMovedY) < component->GetMinMovementDelta()
             )
          {
             osg::Vec3 norml = component->GetLastClampedNormal();
@@ -357,6 +376,7 @@ namespace dtEntitySimulation
             {
                transformcomp->SetRotation(component->GetLastClampedAttitude());
             }
+            transformcomp->Finished();
             continue;
          }
 
@@ -438,5 +458,6 @@ namespace dtEntitySimulation
       component->SetLastClampedPosition(translation);
 
       component->SetDirty(false);
+      transformcomp->Finished();
    }
 }

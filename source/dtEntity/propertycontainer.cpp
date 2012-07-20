@@ -26,71 +26,18 @@
 namespace dtEntity
 {
   
-   ////////////////////////////////////////////////////////////////////////////////
-   const Property* PropertyContainer::Get(StringId name) const
-   {
-      PropertyMap::const_iterator it = mProperties.find(name);
-      if(it == mProperties.end())
-      {
-         return NULL;
-      }
-      else
-      {
-         return it->second;
-      }
-   }
-   
-   ////////////////////////////////////////////////////////////////////////////////
-   bool PropertyContainer::Empty() const
-   {
-      return mProperties.empty();
-   }
-
-   ////////////////////////////////////////////////////////////////////////////////
-   Property* PropertyContainer::Get(StringId name)
-   {
-      PropertyMap::iterator it = mProperties.find(name);
-      if(it == mProperties.end())
-      {
-         return NULL;
-      }
-      else
-      {
-         return it->second;
-      }
-   }
-
-   ////////////////////////////////////////////////////////////////////////////////
-   void PropertyContainer::GetProperties(PropertyMap& toFill)
-   {
-      for(PropertyMap::iterator i = mProperties.begin(); i != mProperties.end(); ++i)
-      {
-         toFill.insert(*i);
-      }
-   }
-   
-   ////////////////////////////////////////////////////////////////////////////////
-   void PropertyContainer::GetProperties(ConstPropertyMap& toFill) const
-   {
-      for(PropertyMap::const_iterator i = mProperties.begin(); i != mProperties.end(); ++i)
-      {
-         toFill.insert(*i);
-      }
-   }
-
-   ////////////////////////////////////////////////////////////////////////////////
-   bool PropertyContainer::Has(StringId name) const
-   {
-      return mProperties.find(name) != mProperties.end();
-   }
-
+  
    ////////////////////////////////////////////////////////////////////////////////
    void PropertyContainer::InitFrom(const PropertyContainer& other)
    {
-      for(PropertyMap::const_iterator i = other.mProperties.begin(); i != other.mProperties.end(); ++i)
+      for(PropertyGroup::const_iterator i = other.mValue.begin(); i != other.mValue.end(); ++i)
       {
          Property* own = Get(i->first);
-         if(own != NULL)
+         if(own == NULL)
+         {
+            LOG_ERROR("Error in InitFrom: PropertyContainer has no property named " << GetStringFromSID(i->first));
+         }
+         else
          {
             own->SetFrom(*i->second);
          }
@@ -100,8 +47,8 @@ namespace dtEntity
    ////////////////////////////////////////////////////////////////////////////////
    void PropertyContainer::Register(StringId name, Property* prop)
    {
-      assert(Get(name) == NULL && "Property already registered!");
-      mProperties[name] = prop;
+      assert(!Has(name) && "Property already registered!");
+      Add(name, prop);
    }
 
    ////////////////////////////////////////////////////////////////////////////////
@@ -159,7 +106,7 @@ namespace dtEntity
    }
 
    ////////////////////////////////////////////////////////////////////////////////
-   void PropertyContainer::SetMatrix(StringId name, const osg::Matrix& val)
+   void PropertyContainer::SetMatrix(StringId name, const Matrix& val)
    {
       assert(Get(name));
       Property* prop = Get(name);
@@ -168,7 +115,7 @@ namespace dtEntity
    }
 
    ////////////////////////////////////////////////////////////////////////////////
-   void PropertyContainer::SetQuat(StringId name, const osg::Quat& val)
+   void PropertyContainer::SetQuat(StringId name, const Quat& val)
    {
       assert(Get(name));
       Property* prop = Get(name);
@@ -204,7 +151,7 @@ namespace dtEntity
    }
 
    ////////////////////////////////////////////////////////////////////////////////
-   void PropertyContainer::SetVec2(StringId name, const osg::Vec2f& val)
+   void PropertyContainer::SetVec2(StringId name, const Vec2f& val)
    {
       assert(Get(name));
       Property* prop = Get(name);
@@ -213,7 +160,7 @@ namespace dtEntity
    }
 
    ////////////////////////////////////////////////////////////////////////////////
-   void PropertyContainer::SetVec3(StringId name, const osg::Vec3f& val)
+   void PropertyContainer::SetVec3(StringId name, const Vec3f& val)
    {
       assert(Get(name));
       Property* prop = Get(name);
@@ -222,7 +169,7 @@ namespace dtEntity
    }
 
    ////////////////////////////////////////////////////////////////////////////////
-   void PropertyContainer::SetVec4(StringId name, const osg::Vec4f& val)
+   void PropertyContainer::SetVec4(StringId name, const Vec4f& val)
    {
       assert(Get(name));
       Property* prop = Get(name);
@@ -231,7 +178,7 @@ namespace dtEntity
    }
 
    ////////////////////////////////////////////////////////////////////////////////
-   void PropertyContainer::SetVec2d(StringId name, const osg::Vec2d& val)
+   void PropertyContainer::SetVec2d(StringId name, const Vec2d& val)
    {
       assert(Get(name));
       Property* prop = Get(name);
@@ -240,7 +187,7 @@ namespace dtEntity
    }
 
    ////////////////////////////////////////////////////////////////////////////////
-   void PropertyContainer::SetVec3d(StringId name, const osg::Vec3d& val)
+   void PropertyContainer::SetVec3d(StringId name, const Vec3d& val)
    {
       assert(Get(name));
       Property* prop = Get(name);
@@ -249,7 +196,7 @@ namespace dtEntity
    }
 
    ////////////////////////////////////////////////////////////////////////////////
-   void PropertyContainer::SetVec4d(StringId name, const osg::Vec4d& val)
+   void PropertyContainer::SetVec4d(StringId name, const Vec4d& val)
    {
       assert(Get(name));
       Property* prop = Get(name);
@@ -306,7 +253,7 @@ namespace dtEntity
    }
 
    ////////////////////////////////////////////////////////////////////////////////
-   osg::Quat PropertyContainer::GetQuat(StringId name) const
+   Quat PropertyContainer::GetQuat(StringId name) const
    {
       const Property* prop = Get(name);
       assert(prop && "Property with that name does not exist!");
@@ -338,7 +285,7 @@ namespace dtEntity
    }
 
    ////////////////////////////////////////////////////////////////////////////////
-   osg::Vec2f PropertyContainer::GetVec2(StringId name) const
+   Vec2f PropertyContainer::GetVec2(StringId name) const
    {
       const Property* prop = Get(name);
       assert(prop && "Property with that name does not exist!");
@@ -346,7 +293,7 @@ namespace dtEntity
    }
    
    ////////////////////////////////////////////////////////////////////////////////
-   osg::Vec3f PropertyContainer::GetVec3(StringId name) const
+   Vec3f PropertyContainer::GetVec3(StringId name) const
    {
       const Property* prop = Get(name);
       assert(prop && "Property with that name does not exist!");
@@ -354,7 +301,7 @@ namespace dtEntity
    }
 
    ////////////////////////////////////////////////////////////////////////////////
-   osg::Vec4f PropertyContainer::GetVec4(StringId name) const
+   Vec4f PropertyContainer::GetVec4(StringId name) const
    {
       const Property* prop = Get(name);
       assert(prop && "Property with that name does not exist!");
@@ -362,7 +309,7 @@ namespace dtEntity
    }
 
    ////////////////////////////////////////////////////////////////////////////////
-   osg::Vec2d PropertyContainer::GetVec2d(StringId name) const
+   Vec2d PropertyContainer::GetVec2d(StringId name) const
    {
       const Property* prop = Get(name);
       assert(prop && "Property with that name does not exist!");
@@ -370,7 +317,7 @@ namespace dtEntity
    }
    
    ////////////////////////////////////////////////////////////////////////////////
-   osg::Vec3d PropertyContainer::GetVec3d(StringId name) const
+   Vec3d PropertyContainer::GetVec3d(StringId name) const
    {
       const Property* prop = Get(name);
       assert(prop && "Property with that name does not exist!");
@@ -378,99 +325,10 @@ namespace dtEntity
    }
 
    ////////////////////////////////////////////////////////////////////////////////
-   osg::Vec4d PropertyContainer::GetVec4d(StringId name) const
+   Vec4d PropertyContainer::GetVec4d(StringId name) const
    {
       const Property* prop = Get(name);
       assert(prop && "Property with that name does not exist!");
       return prop->Vec4dValue();
-   }
-
-   ////////////////////////////////////////////////////////////////////////////////
-   ////////////////////////////////////////////////////////////////////////////////
-   DynamicPropertyContainer::DynamicPropertyContainer()
-   {
-   }
-
-   ////////////////////////////////////////////////////////////////////////////////
-   DynamicPropertyContainer::DynamicPropertyContainer(const DynamicPropertyContainer& other)
-   {
-      PropertyMap::const_iterator i;
-      for(i = other.mProperties.begin(); i != other.mProperties.end(); ++i)
-      {
-         this->AddProperty(i->first, *i->second);
-      }
-   }
-    
-   ////////////////////////////////////////////////////////////////////////////////
-   DynamicPropertyContainer::~DynamicPropertyContainer()
-   {
-      for(PropertyMap::iterator i = mProperties.begin(); i != mProperties.end(); ++i)
-      {
-         delete i->second;
-      }
-   }
-   
-   ////////////////////////////////////////////////////////////////////////////////
-   void DynamicPropertyContainer::operator=(const DynamicPropertyContainer& other)
-   {
-      if(!mProperties.empty())
-      {
-         for(PropertyMap::iterator i = mProperties.begin(); i != mProperties.end(); ++i)
-         {
-            delete i->second;
-         }
-         mProperties.clear();
-      }
-      PropertyMap::const_iterator j;
-      for(j = other.mProperties.begin(); j != other.mProperties.end(); ++j)
-      {
-         this->AddProperty(j->first, *j->second);
-      }
-   }
-
-   ////////////////////////////////////////////////////////////////////////////////
-   DynamicPropertyContainer& DynamicPropertyContainer::operator+=(const DynamicPropertyContainer& other)
-   {
-      PropertyMap::const_iterator i;
-      for(i = other.mProperties.begin(); i != other.mProperties.end(); ++i)
-      {
-         this->AddProperty(i->first, *i->second);
-      }
-      return *this;
-   }
-
-   ////////////////////////////////////////////////////////////////////////////////
-   void DynamicPropertyContainer::AddProperty(StringId name, const Property& p)
-   {
-      DeleteProperty(name);
-      Register(name, p.Clone());
-   }
-
-   ////////////////////////////////////////////////////////////////////////////////
-   bool DynamicPropertyContainer::DeleteProperty(StringId name)
-   {
-      PropertyMap::iterator i = mProperties.find(name);
-      if(i == mProperties.end())
-      {
-         return false;
-      }
-      delete i->second;
-      mProperties.erase(i);
-      return true;
-   }
-
-   ////////////////////////////////////////////////////////////////////////////////
-   void DynamicPropertyContainer::SetProperties(const ConstPropertyMap& props)
-   {
-	   while(!mProperties.empty())
-	   {
-	      this->DeleteProperty(mProperties.begin()->first);
-	   }
-
-      PropertyContainer::ConstPropertyMap::const_iterator i;
-      for(i = props.begin(); i != props.end(); ++i)
-      {
-         this->AddProperty(i->first, *i->second);
-      }
    }
 }

@@ -20,13 +20,14 @@
 
 #include <dtEntity/cameracomponent.h>
 
-#include <dtEntity/applicationcomponent.h>
-#include <dtEntity/basemessages.h>
+#include <dtEntity/core.h>
+#include <dtEntity/osgsysteminterface.h>
 #include <dtEntity/entity.h>
 #include <dtEntity/entitymanager.h>
 #include <dtEntity/layerattachpointcomponent.h>
 #include <dtEntity/mapcomponent.h>
 #include <dtEntity/nodemasks.h>
+#include <dtEntity/systemmessages.h>
 
 #include <osgViewer/View>
 #include <osgViewer/Viewer>
@@ -72,6 +73,15 @@ namespace dtEntity
    ////////////////////////////////////////////////////////////////////////////
    CameraComponent::CameraComponent()
       : BaseClass(new osg::Camera())
+      , mContextId(
+           DynamicIntProperty::SetValueCB(this, &CameraComponent::SetContextId),
+           DynamicIntProperty::GetValueCB(this, &CameraComponent::GetContextId)
+        )
+      , mContextIdVal(-1)
+      , mCullingMode (
+           DynamicStringIdProperty::SetValueCB(this, &CameraComponent::SetCullingMode),
+           DynamicStringIdProperty::GetValueCB(this, &CameraComponent::GetCullingMode)
+        )
       , mFieldOfView(
            DynamicDoubleProperty::SetValueCB(this, &CameraComponent::SetFieldOfView),
            DynamicDoubleProperty::GetValueCB(this, &CameraComponent::GetFieldOfView)
@@ -87,7 +97,7 @@ namespace dtEntity
       , mFarClip (
            DynamicDoubleProperty::SetValueCB(this, &CameraComponent::SetFarClip),
            DynamicDoubleProperty::GetValueCB(this, &CameraComponent::GetFarClip)
-        )
+        )      
       , mClearColor (
            DynamicVec4Property::SetValueCB(this, &CameraComponent::SetClearColor),
            DynamicVec4Property::GetValueCB(this, &CameraComponent::GetClearColor)
@@ -143,8 +153,6 @@ namespace dtEntity
       mOrthoZNear.Set(-10000);
       mOrthoZFar.Set(10000);
 
-      mContextId.Set(-1);
-
       SetCullingMode(NoAutoNearFarCullingId);
       GetCamera()->setAllowEventFocus(true);
    }
@@ -172,9 +180,9 @@ namespace dtEntity
    }
 
    ////////////////////////////////////////////////////////////////////////////
-   void CameraComponent::SetContextId(unsigned int id)
+   void CameraComponent::SetContextId(int id)
    {
-      mContextId.Set(id);
+      mContextIdVal = id;
       TryAssignContext();
    }
 
@@ -263,14 +271,12 @@ namespace dtEntity
    {
       if(mEntity == NULL || mContextId.Get() == -1) return;
 
-      ApplicationSystem* appsys;
-      bool success = mEntity->GetEntityManager().GetEntitySystem(ApplicationSystem::TYPE, appsys);
-      assert(success);
+      osgViewer::ViewerBase* viewer = static_cast<OSGSystemInterface*>(GetSystemInterface())->GetViewer();
 
       osgViewer::View* view;
             
       if(GetCamera()->getGraphicsContext() &&
-         GetCamera()->getGraphicsContext()->getState()->getContextID() == (unsigned int)mContextId.Get())
+         GetCamera()->getGraphicsContext()->getState()->getContextID() == static_cast<unsigned int>(mContextId.Get()))
       {
          view = static_cast<osgViewer::View*>(GetCamera()->getView());
       }
@@ -278,7 +284,7 @@ namespace dtEntity
       {
          osg::View* lastView = GetCamera()->getView();
          osgViewer::ViewerBase::Views views;
-         appsys->GetViewer()->getViews(views);
+         viewer->getViews(views);
 
          for(osgViewer::ViewerBase::Views::iterator i = views.begin(); i != views.end(); ++i)
          {
@@ -300,10 +306,10 @@ namespace dtEntity
                }
             }
             unsigned int cid = oldcam->getGraphicsContext()->getState()->getContextID();
-            if(cid == (unsigned int)mContextId.Get())
+            if(cid == static_cast<unsigned int>(mContextId.Get()))
             {               
                
-               appsys->GetViewer()->stopThreading();
+               viewer->stopThreading();
 
                osg::ref_ptr<osg::GraphicsContext> ctx = oldcam->getGraphicsContext();
                for(unsigned int j = 0; j < oldcam->getNumChildren(); ++j)
@@ -322,7 +328,7 @@ namespace dtEntity
                   view->removeSlave(0);
                }
 
-               appsys->GetViewer()->startThreading(); 
+               viewer->startThreading();
 
                CameraAddedMessage msg;
                msg.SetAboutEntityId(mEntity->GetId());
@@ -336,11 +342,11 @@ namespace dtEntity
                
                double fovy, aspectRatio, zNear, zFar;
                newcam->getProjectionMatrixAsPerspective(fovy, aspectRatio, zNear, zFar);
-               double newAspectRatio = double(traits.width) / double(traits.height);
-               double aspectRatioChange = newAspectRatio / aspectRatio;
-               if (aspectRatioChange != 1.0)
+               double newAspectRatio = static_cast<double>(traits.width) / static_cast<double>(traits.height);
+               if (newAspectRatio != aspectRatio)
                {
-                 newcam->getProjectionMatrix() *= osg::Matrix::scale(1.0/aspectRatioChange, 1.0, 1.0);
+                  double aspectRatioChange = newAspectRatio / aspectRatio;
+                  newcam->getProjectionMatrix() *= osg::Matrix::scale(1.0/aspectRatioChange, 1.0, 1.0);
                }
                
                newcam->setViewport(new osg::Viewport(0, 0, traits.width, traits.height));
@@ -356,7 +362,7 @@ namespace dtEntity
 
                if(lastView != NULL && lastView != view)
                {
-                  osgViewer::CompositeViewer* compview = dynamic_cast<osgViewer::CompositeViewer*>(appsys->GetViewer());
+                  osgViewer::CompositeViewer* compview = dynamic_cast<osgViewer::CompositeViewer*>(viewer);
                   if(compview)
                   {
                      compview->removeView(dynamic_cast<osgViewer::View*>(lastView));
@@ -370,7 +376,7 @@ namespace dtEntity
       }
       
       LayerAttachPointSystem* layersys;
-      success = mEntity->GetEntityManager().GetEntitySystem(LayerAttachPointComponent::TYPE, layersys);
+      bool success = mEntity->GetEntityManager().GetEntitySystem(LayerAttachPointComponent::TYPE, layersys);
       assert(success);
 
       LayerAttachPointComponent* lcomp;
@@ -391,32 +397,6 @@ namespace dtEntity
       }
 
       UpdateProjectionMatrix();
-
-   }
-
-   ////////////////////////////////////////////////////////////////////////////
-   void CameraComponent::OnPropertyChanged(StringId propname, Property& prop)
-   {
-      if(propname == PositionId || propname == EyeDirectionId || propname == UpId)
-      {
-         return;
-      }
-      if(propname == ContextIdId)
-      {
-         TryAssignContext();
-      }
-      else if(propname == CullingModeId)
-      {
-         SetCullingMode(prop.StringIdValue());
-      }
-      else if(propname == OrthoLeftId || propname == OrthoRightId ||
-         propname == OrthoBottomId || propname == OrthoTopId ||
-         propname == OrthoZNearId || propname == OrthoZFarId ||
-         propname == ProjectionModeId
-      )
-      {
-         UpdateProjectionMatrix();
-      }
 
    }
 
@@ -442,7 +422,7 @@ namespace dtEntity
    ////////////////////////////////////////////////////////////////////////////
    void CameraComponent::SetCullingMode(StringId v)
    {
-      mCullingMode.Set(v);
+      mCullingModeVal = v;
       if(v == NoAutoNearFarCullingId)
       {
          GetCamera()->setComputeNearFarMode(osg::CullSettings::DO_NOT_COMPUTE_NEAR_FAR);
@@ -470,6 +450,7 @@ namespace dtEntity
    ////////////////////////////////////////////////////////////////////////////
    void CameraComponent::Finished()
    {
+      BaseClass::Finished();
       UpdateViewMatrix();
    }
 
@@ -561,6 +542,12 @@ namespace dtEntity
    }
 
    ////////////////////////////////////////////////////////////////////////////
+   CameraSystem::~CameraSystem()
+   {
+      GetEntityManager().UnregisterForMessages(WindowCreatedMessage::TYPE, mWindowCreatedFunctor);
+   }
+
+   ////////////////////////////////////////////////////////////////////////////
    void CameraSystem::OnWindowCreated(const Message& m)
    {
       const WindowCreatedMessage& msg = static_cast<const WindowCreatedMessage&>(m);
@@ -572,7 +559,7 @@ namespace dtEntity
    }
 
    ////////////////////////////////////////////////////////////////////////////
-   EntityId CameraSystem::GetCameraEntityByContextId(unsigned int id)
+   EntityId CameraSystem::GetCameraEntityByContextId(int id)
    {
 
       for(ComponentStore::iterator i = mComponents.begin(); i != mComponents.end(); ++i)

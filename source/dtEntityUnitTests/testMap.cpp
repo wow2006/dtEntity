@@ -39,6 +39,11 @@ struct MapFixture
       mEntityManager.GetEntitySystem(MapComponent::TYPE, mMapSystem);
    }
 
+   ~MapFixture()
+   {
+      ComponentPluginManager::DestroyInstance();
+   }
+
    EntityManager mEntityManager;
    MapSystem* mMapSystem;
 };
@@ -90,9 +95,9 @@ bool Has(const dtEntity::Spawner::ComponentProperties& props, const std::string&
    return props.find(dtEntity::SID(key)) != props.end();
 }
 
-const dtEntity::Property* GetProp(const dtEntity::DynamicPropertyContainer& props, const std::string& key)
+const dtEntity::Property* GetProp(const dtEntity::GroupProperty& props, const std::string& key)
 {
-   dtEntity::PropertyContainer::PropertyMap propmap = props.GetAllProperties();
+   dtEntity::PropertyGroup propmap = props.Get();
    if(propmap.find(dtEntity::SID(key)) == propmap.end())
    {
       return NULL;
@@ -100,7 +105,7 @@ const dtEntity::Property* GetProp(const dtEntity::DynamicPropertyContainer& prop
    return propmap[dtEntity::SID(key)];
 }
 
-bool Equals(const dtEntity::DynamicPropertyContainer& props, const std::string& key, const std::string& value)
+bool Equals(const dtEntity::GroupProperty& props, const std::string& key, const std::string& value)
 {
    const dtEntity::Property* prop = GetProp(props, key);
    if(prop == NULL)
@@ -124,13 +129,12 @@ TEST_FIXTURE(MapFixture, SpawnerPropertyValuesCorrect)
    spawner->GetAllComponentProperties(props);
    CHECK(Has(props, "TestComponent"));
 
-   dtEntity::DynamicPropertyContainer compprops = 
+   dtEntity::GroupProperty compprops =
       spawner->GetComponentValues(dtEntity::SID("TestComponent"));
 
    CHECK(Equals(compprops, "StringProperty", "StringValue"));
    CHECK(Equals(compprops, "BoolTrue", "true"));
    CHECK(Equals(compprops, "BoolFalse", "false"));
-   CHECK(Equals(compprops, "CharProperty", "x"));
    CHECK(Equals(compprops, "DoubleProperty", "12345.6789000000"));
    CHECK(Equals(compprops, "IntProperty", "-12345"));
    CHECK(Equals(compprops, "UIntProperty", "12345"));
@@ -168,9 +172,13 @@ TEST_FIXTURE(MapFixture, SaveMapTest)
 {
    std::string mapname = "TestData/testmap_generated.dtemap";
 
-   {
-      assert(!osgDB::getDataFilePathList().empty());
-      mMapSystem->AddEmptyMap(osgDB::getDataFilePathList().front(), mapname);
+   CHECK(getenv("DTENTITY_BASEASSETS") != NULL);   
+   std::string projectassets = getenv("DTENTITY_BASEASSETS");
+   std::string targetpath = projectassets + std::string("/") + mapname;
+
+   {  
+      
+      mMapSystem->AddEmptyMap(projectassets, mapname);
       dtEntity::Entity* entity;
       mEntityManager.CreateEntity(entity);
       dtEntity::PositionAttitudeTransformComponent* transcomp;
@@ -191,10 +199,7 @@ TEST_FIXTURE(MapFixture, SaveMapTest)
       mapcomp->SetEntityName("TestEntityName");
       mapcomp->Finished();
       mMapSystem->AddToScene(entity->GetId());
-
-      osgDB::FilePathList paths = osgDB::getDataFilePathList();
-      std::string path = paths.front() + std::string("/") + mapname;
-      mMapSystem->SaveMapAs(mapname, path);
+      mMapSystem->SaveMapAs(mapname, targetpath);
 
       mMapSystem->RemoveFromScene(entity->GetId());
       mEntityManager.KillEntity(entity->GetId());
@@ -224,30 +229,33 @@ TEST_FIXTURE(MapFixture, SaveMapTest)
 
 
    }
+
+   std::remove(targetpath.c_str());
 }
 
 TEST_FIXTURE(MapFixture, SaveSpawner)
 {
    std::string mapname = "TestData/testmap_generated.dtemap";
-
+   CHECK(getenv("DTENTITY_BASEASSETS") != NULL);   
+   std::string projectassets = getenv("DTENTITY_BASEASSETS");
+   std::string targetpath = projectassets + std::string("/") + mapname;
+      
    {
-      mMapSystem->AddEmptyMap(osgDB::getDataFilePathList().front(),mapname);
+      mMapSystem->AddEmptyMap(projectassets, mapname);
 
       dtEntity::Spawner* spawner1 = new dtEntity::Spawner("TestSpawner1", mapname);
       spawner1->SetAddToSpawnerStore(true);
       spawner1->SetGUICategory("TestGuiCategory");
       spawner1->SetIconPath("TestIconPath");
 
-      DynamicPropertyContainer props;
-      props.AddProperty(dtEntity::SID("StringProp1"), dtEntity::StringProperty("StringPropValue1"));
-      props.AddProperty(dtEntity::SID("StringProp2"), dtEntity::StringProperty("StringPropValue2"));
+      GroupProperty props;
+      props.Add(dtEntity::SID("StringProp1"), new dtEntity::StringProperty("StringPropValue1"));
+      props.Add(dtEntity::SID("StringProp2"), new dtEntity::StringProperty("StringPropValue2"));
       spawner1->AddComponent(dtEntity::SID("TestComponent"), props);
 
       mMapSystem->AddSpawner(*spawner1);
 
-      osgDB::FilePathList paths = osgDB::getDataFilePathList();
-      std::string path = paths.front() + std::string("/") + mapname;
-      mMapSystem->SaveMapAs(mapname, path);
+      mMapSystem->SaveMapAs(mapname, targetpath);
       mMapSystem->UnloadMap(mapname);
    }
    {
@@ -261,9 +269,10 @@ TEST_FIXTURE(MapFixture, SaveSpawner)
       CHECK_EQUAL(true, spawner1->GetAddToSpawnerStore());
       CHECK_EQUAL("TestGuiCategory", spawner1->GetGUICategory());
       CHECK_EQUAL("TestIconPath", spawner1->GetIconPath());
-      DynamicPropertyContainer props = spawner1->GetComponentValues(dtEntity::SID("TestComponent"));
-      CHECK_EQUAL((unsigned int)2, props.GetAllProperties().size());
+      GroupProperty props = spawner1->GetComponentValues(dtEntity::SID("TestComponent"));
+      CHECK_EQUAL((unsigned int)2, props.Get().size());
       CHECK_EQUAL("StringPropValue1", props.Get(dtEntity::SID("StringProp1"))->StringValue());
       CHECK_EQUAL("StringPropValue2", props.Get(dtEntity::SID("StringProp2"))->StringValue());
    }
+   std::remove(targetpath.c_str());
 }

@@ -26,7 +26,6 @@
 #include <dtEntityEditor/editorapplication.h>
 #include <dtEntityQtWidgets/entitytree.h>
 #include <dtEntityQtWidgets/listdialog.h>
-#include <dtEntity/basemessages.h>
 #include <dtEntityQtWidgets/assetcreationdialog.h>
 #include <dtEntityQtWidgets/osgadapterwidget.h>
 #include <dtEntityQtWidgets/osggraphicswindowqt.h>
@@ -34,6 +33,8 @@
 #include <dtEntityQtWidgets/qtguiwindowsystemwrapper.h>
 #include <dtEntityQtWidgets/spawnerstore.h>
 #include <dtEntity/log.h>
+#include <dtEntity/commandmessages.h>
+#include <dtEntity/systemmessages.h>
 #include <cassert>
 #include <iostream>
 #include <QtGui/QtGui>
@@ -74,7 +75,7 @@ namespace dtEntityEditor
 
    ////////////////////////////////////////////////////////////////////////////////
    EditorMainWindow::EditorMainWindow(EditorApplication* app, QWidget* parent)
-      : QMainWindow(parent) 
+      : QMainWindow(parent)
       , mApplication(app)
       , mEntityTreeDock(NULL)
       , mSpawnersDock(NULL)
@@ -88,11 +89,12 @@ namespace dtEntityEditor
 
       // register local message pump to receive messages from game message pump
       dtEntity::MessageFunctor functor(&mMessagePump, &dtEntity::MessagePump::EnqueueMessage);
-      mApplication->GetEntityManager().RegisterForMessages(dtEntity::ToolsUpdatedMessage::TYPE, functor);
-      mApplication->GetEntityManager().RegisterForMessages(dtEntity::SceneLoadedMessage::TYPE, functor);
-      mApplication->GetEntityManager().RegisterForMessages(dtEntity::SceneUnloadedMessage::TYPE, functor);
-      mApplication->GetEntityManager().RegisterForMessages(dtEntity::MapLoadedMessage::TYPE, functor);
-      mApplication->GetEntityManager().RegisterForMessages(dtEntity::MapUnloadedMessage::TYPE, functor);
+      dtEntity::EntityManager& em = mApplication->GetEntityManager();
+      em.RegisterForMessages(dtEntity::ToolsUpdatedMessage::TYPE, functor);
+      em.RegisterForMessages(dtEntity::SceneLoadedMessage::TYPE, functor);
+      em.RegisterForMessages(dtEntity::SceneUnloadedMessage::TYPE, functor);
+      em.RegisterForMessages(dtEntity::MapLoadedMessage::TYPE, functor);
+      em.RegisterForMessages(dtEntity::MapUnloadedMessage::TYPE, functor);
 
       mMessagePump.RegisterForMessages(dtEntity::ToolsUpdatedMessage::TYPE, dtEntity::MessageFunctor(this, &EditorMainWindow::OnToolsUpdated));
       mMessagePump.RegisterForMessages(dtEntity::SceneLoadedMessage::TYPE, dtEntity::MessageFunctor(this, &EditorMainWindow::OnSceneLoaded));
@@ -104,17 +106,17 @@ namespace dtEntityEditor
       setMinimumSize(800, 600);
       layout()->setContentsMargins(0, 0, 0, 0);
 
-      setDockOptions(QMainWindow::AnimatedDocks | QMainWindow::AllowTabbedDocks | 
+      setDockOptions(QMainWindow::AnimatedDocks | QMainWindow::AllowTabbedDocks |
                      QMainWindow::VerticalTabs);
 
-      
+
       setWindowTitle("dtEntity Editor");
 
       createActions();
       createMenus();
       createToolBars();
       CreateDockWidgets();
-      
+
       connect(this, SIGNAL(LoadScene(const QString&)), app, SLOT(LoadScene(const QString&)));
       connect(this, SIGNAL(NewScene()), app, SLOT(NewScene()));
       connect(this, SIGNAL(SaveScene(QString)), app, SLOT(SaveScene(QString)));
@@ -167,7 +169,7 @@ namespace dtEntityEditor
 
       settings.setValue("geometry", saveGeometry());
       settings.setValue("windowState", saveState());
-      
+
       settings.setValue("size", size());
       settings.setValue("pos", pos());
       settings.endGroup();
@@ -197,11 +199,8 @@ namespace dtEntityEditor
       mAddPluginAct = new QAction(tr("Add Plugin/Library..."), this);
       connect(mAddPluginAct, SIGNAL(triggered()), this, SLOT(OnAddPlugin()));
 
-      mResetSystemAct = new QAction(tr("Reset System"), this);
-      connect(mResetSystemAct , SIGNAL(triggered()), this, SLOT(OnResetSystem()));
-
       mExitAct = new QAction(tr("E&xit"), this);
-      
+
 #if (QT_VERSION >= QT_VERSION_CHECK(4, 6, 0))
       mExitAct->setShortcuts(QKeySequence::Quit);
 #endif
@@ -225,7 +224,6 @@ namespace dtEntityEditor
       mFileMenu->addSeparator();
       mFileMenu->addAction(mAddPluginAct);
       mFileMenu->addSeparator();
-      mFileMenu->addAction(mResetSystemAct);
       mFileMenu->addAction(mExitAct);
 
       //mEditMenu = menuBar()->addMenu(tr("&Edit"));
@@ -505,7 +503,7 @@ namespace dtEntityEditor
 
    ////////////////////////////////////////////////////////////////////////////////
    void EditorMainWindow::CreateDockWidgets()
-   {      
+   {
       CreateEntityTree();
       CreateSpawners();
       CreatePropertyEditor();
@@ -583,7 +581,7 @@ namespace dtEntityEditor
          urls << QUrl::fromLocalFile(path);
       }
 
-      QFileDialog dialog(this, tr("Save Scene"), currpath, tr("Scenes (*.dtescene)"));
+      QFileDialog dialog(this, tr("Save Scene"), currpath, tr("Scenes (*.dtescene *.bscene)"));
       dialog.setSidebarUrls(urls);
       dialog.setFileMode(QFileDialog::AnyFile);
 
@@ -596,17 +594,7 @@ namespace dtEntityEditor
    }
 
    ////////////////////////////////////////////////////////////////////////////////
-   void EditorMainWindow::OnResetSystem()
-   {
-      dtEntity::ResetSystemMessage msg;
-      msg.SetSceneName(mCurrentScene.toStdString());
-      mApplication->GetEntityManager().EnqueueMessage(msg);
-      QTimer::singleShot(10, mApplication, SLOT(InitializeScripting()));
-   }
-
-
-   ////////////////////////////////////////////////////////////////////////////////
-   void RecursiveSearch(QDir dir, QSet<QString>& entries, const QString& extension, const QString relDir = "")
+   void RecursiveSearch(QDir dir, QSet<QString>& entries, const QString& extension, const QString& relDir = "")
    {
       dir.setSorting( QDir::Name );
       dir.setFilter( QDir::Files | QDir::Dirs );
@@ -646,6 +634,7 @@ namespace dtEntityEditor
       {
          QDir dir(*i);
          RecursiveSearch(dir, entries, "dtescene");
+         RecursiveSearch(dir, entries, "bscene");
       }
       if(entries.empty())
       {
@@ -659,7 +648,7 @@ namespace dtEntityEditor
       dtEntityQtWidgets::ListDialog* dialog = new dtEntityQtWidgets::ListDialog(l);
 
       if(dialog->exec() == QDialog::Accepted)
-      {  
+      {
          QStringList sel = dialog->GetSelectedItems();
          if(sel.size() != 0)
          {
@@ -720,7 +709,7 @@ namespace dtEntityEditor
 
    ////////////////////////////////////////////////////////////////////////////////
    void EditorMainWindow::SetOSGWindow(dtEntityQtWidgets::OSGGraphicsWindowQt* osgGraphWindow)
-   {      
+   {
       dtEntityQtWidgets::OSGAdapterWidget* glwidget =
             dynamic_cast<dtEntityQtWidgets::OSGAdapterWidget*>(osgGraphWindow->GetQGLWidget());
       glwidget->setObjectName("glwidget_main");

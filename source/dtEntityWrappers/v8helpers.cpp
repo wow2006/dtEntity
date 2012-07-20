@@ -25,7 +25,6 @@
 #include <sstream>
 #include <iostream>
 #include <osg/MatrixTransform>
-#include <osg/Referenced>
 #include <osgDB/FileUtils>
 #include <fstream>
 #ifdef HAVE_MMAN_H
@@ -43,6 +42,12 @@ namespace dtEntityWrappers
 
    using namespace v8;
 
+   ScriptSystem* GetScriptSystem()
+   {
+      ScriptSystem* ss = static_cast<ScriptSystem*>(Isolate::GetCurrent()->GetData());
+      assert(ss != NULL);
+      return ss;
+   }
 
 
    ////////////////////////////////////////////////////////////////////////////////
@@ -72,7 +77,12 @@ namespace dtEntityWrappers
       }
 
      String::Utf8Value trace(try_catch->StackTrace());
-	  std::string tracestr = *trace;
+     std::string tracestr;
+
+     if(trace.length() != 0)
+     {
+         tracestr = *trace;
+     }
      
 	  std::ostringstream os;
      os << std::endl << sourceline_string << std::endl;	  

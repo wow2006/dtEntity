@@ -57,7 +57,7 @@ namespace dtEntityQtWidgets
          TreeItem* item = static_cast<TreeItem*>(index.parent().internalPointer());
          PropertyTreeItem* pitem = dynamic_cast<PropertyTreeItem*>(item);
          if(   pitem &&
-               pitem->mProperty->GetType() == dtEntity::DataType::ARRAY &&
+               pitem->mProperty->GetDataType() == dtEntity::DataType::ARRAY &&
                dynamic_cast<ArrayDelegateFactory*>(item->GetChildDelegateFactory()) != NULL)
          {
 
@@ -173,49 +173,6 @@ namespace dtEntityQtWidgets
          return;
       }
       dlgt->paint(painter, option, index);
-   }
-
-   ////////////////////////////////////////////////////////////////////////////////
-   ////////////////////////////////////////////////////////////////////////////////
-   CharPropertyDelegate::CharPropertyDelegate(QObject *parent)
-     : PropertySubDelegate(parent)
-   {
-   }
-
-   ////////////////////////////////////////////////////////////////////////////////
-   QWidget* CharPropertyDelegate::createEditor(QWidget* parent,
-     const QStyleOptionViewItem&/* option */,
-     const QModelIndex& index) const
-   {
-     QLineEdit* editor = new QLineEdit(parent);
-     editor->setMaxLength(1);
-     return editor;
-   }
-
-   ////////////////////////////////////////////////////////////////////////////////
-   void CharPropertyDelegate::setEditorData(QWidget *editor,
-                                     const QModelIndex &index) const
-   {
-      QString value = index.model()->data(index, Qt::EditRole).toString();
-      QLineEdit * e = static_cast<QLineEdit*>(editor);
-      e->setText(value);
-   }
-
-   ////////////////////////////////////////////////////////////////////////////////
-   void CharPropertyDelegate::setModelData(QWidget *editor, QAbstractItemModel *model,
-                                    const QModelIndex &index) const
-   {
-      QLineEdit* e = static_cast<QLineEdit*>(editor);
-
-      QString value = e->text();
-      model->setData(index, value, Qt::EditRole);
-   }
-
-   ////////////////////////////////////////////////////////////////////////////////
-   void CharPropertyDelegate::updateEditorGeometry(QWidget *editor,
-     const QStyleOptionViewItem &option, const QModelIndex &/* index */) const
-   {
-     editor->setGeometry(option.rect);
    }
 
    ////////////////////////////////////////////////////////////////////////////////
@@ -744,7 +701,7 @@ namespace dtEntityQtWidgets
    ////////////////////////////////////////////////////////////////////////////////
    void SwitchPropertyDelegate::SetValueByString(dtEntity::Property& prop, const QString& val) const
    {
-      assert(prop.GetType() == dtEntity::DataType::GROUP);
+      assert(prop.GetDataType() == dtEntity::DataType::GROUP);
       dtEntity::PropertyGroup grp = prop.GroupValue();
       dtEntity::PropertyGroup::iterator sel = grp.find(dtEntity::SIDHash("__SELECTED__"));
       if(sel != grp.end())
@@ -756,7 +713,7 @@ namespace dtEntityQtWidgets
    ////////////////////////////////////////////////////////////////////////////////
    QVariant SwitchPropertyDelegate::GetEditableValue(const dtEntity::Property& prop) const
    {
-      assert(prop.GetType() == dtEntity::DataType::GROUP);
+      assert(prop.GetDataType() == dtEntity::DataType::GROUP);
 
       dtEntity::PropertyGroup grp = prop.GroupValue();
 

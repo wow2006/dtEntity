@@ -25,7 +25,8 @@
 #include "rocketsystemwrapper.h"
 
 #include <dtEntity/entity.h>
-#include <dtEntity/applicationcomponent.h>
+#include <dtEntity/core.h>
+#include <dtEntity/osgsysteminterface.h>
 #include <dtEntity/layerattachpointcomponent.h>
 #include <dtEntity/windowmanager.h>
 #include <iostream>
@@ -58,7 +59,6 @@ namespace dtEntityRocket
       switch(value.GetType())
       {
       case Rocket::Core::Variant::BYTE: return new dtEntity::IntProperty(value.Get<int>());break;
-      case Rocket::Core::Variant::CHAR: return new dtEntity::CharProperty(value.Get<char>());
       case Rocket::Core::Variant::FLOAT: return new dtEntity::FloatProperty(value.Get<float>());
       case Rocket::Core::Variant::INT: return new dtEntity::IntProperty(value.Get<int>());
       case Rocket::Core::Variant::STRING: return new dtEntity::StringProperty(value.Get<Rocket::Core::String>().CString());
@@ -210,9 +210,8 @@ namespace dtEntityRocket
      osgLibRocket::GuiNode* gui = dynamic_cast<osgLibRocket::GuiNode*>(GetNode());
      if(gui)
      {
-       dtEntity::ApplicationSystem* appsys;
-       mEntity->GetEntityManager().GetEntitySystem(dtEntity::ApplicationSystem::TYPE, appsys);
-       appsys->GetPrimaryView()->removeEventHandler(gui->GetGUIEventHandler());
+       dtEntity::OSGSystemInterface* iface = static_cast<dtEntity::OSGSystemInterface*>(dtEntity::GetSystemInterface());
+       iface->GetPrimaryView()->removeEventHandler(gui->GetGUIEventHandler());
      }
    }
 
@@ -231,15 +230,14 @@ namespace dtEntityRocket
    void RocketComponent::Finished()
    {
 
+     BaseClass::Finished();
+
      // GuiNode is responsible for rendering the LibRocket GUI to OSG
      osgLibRocket::GuiNode* gui = new osgLibRocket::GuiNode(mContextName.Get(), mDebug.Get());
      SetNode(gui);
 
-     dtEntity::ApplicationSystem* appsys;
-     mEntity->GetEntityManager().GetEntitySystem(dtEntity::ApplicationSystem::TYPE, appsys);
-
-     appsys->GetPrimaryView()->removeEventHandler(gui->GetGUIEventHandler());
-     appsys->GetPrimaryView()->getEventHandlers().push_front(gui->GetGUIEventHandler());
+     dtEntity::OSGSystemInterface* iface = static_cast<dtEntity::OSGSystemInterface*>(dtEntity::GetSystemInterface());
+     iface->GetPrimaryView()->getEventHandlers().push_front(gui->GetGUIEventHandler());
 
      if(mFullScreen.Get())
      {
@@ -254,7 +252,7 @@ namespace dtEntityRocket
        // set the view matrix
        cam->setReferenceFrame(osg::Transform::ABSOLUTE_RF);
        
-       osg::GraphicsContext* gc = appsys->GetPrimaryCamera()->getGraphicsContext();
+       osg::GraphicsContext* gc = iface->GetPrimaryCamera()->getGraphicsContext();
        // same graphics context as main camera
        cam->setGraphicsContext(gc);
 

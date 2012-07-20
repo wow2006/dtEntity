@@ -22,15 +22,16 @@
 
 #include <osg/Referenced>
 #include <dtEntity/export.h>
-#include <dtEntity/entitymanager.h>
+#include <dtEntity/stringid.h>
 #include <osgGA/GUIEventHandler>
-#include <osgViewer/GraphicsWindow>
 #include <map>
 #include <sstream>
 
 
 namespace dtEntity
 {
+   class EntityManager;
+
    ////////////////////////////////////////////////////////////////////////////////
    namespace TouchPhase
    {
@@ -118,7 +119,7 @@ namespace dtEntity
       /**
        * Multitouch interface: return number of touch points
        */
-      unsigned int GetNumTouches() const { return mNumTouches; } 
+      size_t GetNumTouches() const { return mNumTouches; } 
       
       /**
        * Multitouch interface: return touch points
@@ -218,7 +219,7 @@ namespace dtEntity
       dtEntity::EntityManager* mEntityManager;
       bool mMultiTouchEnabled;
       bool mLockCursor;
-      unsigned int mNumTouches;
+      size_t mNumTouches;
       std::vector<TouchPoint> mTouches;
 
       typedef std::vector<osg::ref_ptr<InputCallbackInterface> > Callbacks;

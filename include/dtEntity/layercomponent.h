@@ -20,14 +20,12 @@
 * Martin Scheffler
 */
 
-#include <osg/ref_ptr>
-#include <dtEntity/export.h>
-#include <dtEntity/defaultentitysystem.h>
 #include <dtEntity/component.h>
-#include <dtEntity/message.h>
+#include <dtEntity/defaultentitysystem.h>
+#include <dtEntity/dynamicproperty.h>
+#include <dtEntity/export.h>
 #include <dtEntity/stringid.h>
 #include <dtEntity/scriptaccessor.h>
-#include <osg/Group>
 
 namespace dtEntity
 { 
@@ -69,8 +67,7 @@ namespace dtEntity
       ComponentType GetAttachedComponent() const;
 
       virtual void OnAddedToEntity(Entity &entity);
-      virtual void OnPropertyChanged(StringId propname, Property& prop);
-
+      
       void OnAddedToScene();
       void OnRemovedFromScene();
 
@@ -96,22 +93,27 @@ namespace dtEntity
        */
       bool IsAddedToScene() const { return mAddedToScene; }
 
-
       /**
        * Get OSG node of attached component
        */
       osg::Node* GetAttachedComponentNode() const;
 
+      /**
+       * @return bool if geometry is attached to layer component
+       */
+      bool GetBoundingBox(osg::Vec3d& min, osg::Vec3d& max);
+
    private:
 
-      StringIdProperty mLayerProperty;
-      StringIdProperty mAttachedComponent;
-      StringId mCurrentlyAttachedComponent;
-      StringId mAttachPoint;
-      BoolProperty mVisible;
-      bool  mCurrentlyVisible;
-      bool mAddedToScene;
       Entity* mEntity;
+      DynamicBoolProperty mVisible;
+      bool mVisibleVal;
+      DynamicStringIdProperty mLayer;
+      StringId mLayerVal;
+      DynamicStringIdProperty mAttachedComponent;
+      StringId mAttachedComponentVal;
+      bool mAddedToScene;
+
    };
 
    
@@ -126,6 +128,7 @@ namespace dtEntity
       static const ComponentType TYPE;
 
       LayerSystem(EntityManager& em);
+      ~LayerSystem();
 
       void OnEnterWorld(const Message&);
       void OnLeaveWorld(const Message&);

@@ -22,7 +22,6 @@
 #include <dtEntity/dtentity_config.h>
 #include <dtEntityWrappers/inputhandlerwrapper.h>
 #include <dtEntityWrappers/v8helpers.h>
-#include <dtEntity/basemessages.h>
 #include <iostream>
 #include <v8.h>
 
@@ -222,7 +221,7 @@ namespace dtEntityWrappers
    ////////////////////////////////////////////////////////////////////////////////
    Handle<Value> IHGetKey(const Arguments& args)
    {
-      dtEntity::InputHandler* input = UnwrapInputHandler(args.Holder());
+      dtEntity::InputHandler* input = UnwrapInputHandler(args.This());
       unsigned int contextId = 0;
       if(args.Length() > 1)
       {
@@ -234,7 +233,7 @@ namespace dtEntityWrappers
    ////////////////////////////////////////////////////////////////////////////////
    Handle<Value> IHGetKeyUp(const Arguments& args)
    {
-      dtEntity::InputHandler* input = UnwrapInputHandler(args.Holder());
+      dtEntity::InputHandler* input = UnwrapInputHandler(args.This());
       unsigned int contextId = 0;
       if(args.Length() > 1)
       {
@@ -246,7 +245,7 @@ namespace dtEntityWrappers
    ////////////////////////////////////////////////////////////////////////////////
    Handle<Value> IHGetKeyDown(const Arguments& args)
    {
-      dtEntity::InputHandler* input = UnwrapInputHandler(args.Holder());
+      dtEntity::InputHandler* input = UnwrapInputHandler(args.This());
       unsigned int contextId = 0;
       if(args.Length() > 1)
       {
@@ -258,21 +257,21 @@ namespace dtEntityWrappers
    ////////////////////////////////////////////////////////////////////////////////
    Handle<Value> IHAnyKey(const Arguments& args)
    {
-      dtEntity::InputHandler* input = UnwrapInputHandler(args.Holder());
+      dtEntity::InputHandler* input = UnwrapInputHandler(args.This());
       return Boolean::New(input->AnyKeyDown());
    }
 
    ////////////////////////////////////////////////////////////////////////////////
    Handle<Value> IHGetInputString(const Arguments& args)
    {
-      dtEntity::InputHandler* input = UnwrapInputHandler(args.Holder());
+      dtEntity::InputHandler* input = UnwrapInputHandler(args.This());
       return ToJSString(input->GetInputString());
    }
 
    ////////////////////////////////////////////////////////////////////////////////
    Handle<Value> IHGetMouseButton(const Arguments& args)
    {
-      dtEntity::InputHandler* input = UnwrapInputHandler(args.Holder());
+      dtEntity::InputHandler* input = UnwrapInputHandler(args.This());
 
       unsigned int contextId = 0;
       if(args.Length() > 1)
@@ -285,7 +284,7 @@ namespace dtEntityWrappers
    ////////////////////////////////////////////////////////////////////////////////
    Handle<Value> IHGetMouseButtonUp(const Arguments& args)
    {
-      dtEntity::InputHandler* input = UnwrapInputHandler(args.Holder());
+      dtEntity::InputHandler* input = UnwrapInputHandler(args.This());
 
       unsigned int contextId = 0;
       if(args.Length() > 1)
@@ -298,7 +297,7 @@ namespace dtEntityWrappers
    ////////////////////////////////////////////////////////////////////////////////
    Handle<Value> IHGetMouseButtonDown(const Arguments& args)
    {
-      dtEntity::InputHandler* input = UnwrapInputHandler(args.Holder());
+      dtEntity::InputHandler* input = UnwrapInputHandler(args.This());
       unsigned int contextId = 0;
       if(args.Length() > 1)
       {
@@ -310,7 +309,7 @@ namespace dtEntityWrappers
    ////////////////////////////////////////////////////////////////////////////////
    Handle<Value> IHGetAxis(const Arguments& args)
    {
-      dtEntity::InputHandler* input = UnwrapInputHandler(args.Holder());
+      dtEntity::InputHandler* input = UnwrapInputHandler(args.This());
 #if DTENTITY_USE_STRINGS_AS_STRINGIDS
       return Number::New(input->GetAxis(ToStdString(args[0])));
 #else
@@ -321,7 +320,7 @@ namespace dtEntityWrappers
    ////////////////////////////////////////////////////////////////////////////////
    Handle<Value> IHGetMouseWheelState(const Arguments& args)
    {
-      dtEntity::InputHandler* input = UnwrapInputHandler(args.Holder());
+      dtEntity::InputHandler* input = UnwrapInputHandler(args.This());
       unsigned int contextId = 0;
       if(args.Length() > 0)
       {

@@ -20,7 +20,6 @@
 
 #include <dtEntity/skyboxcomponent.h>
 
-#include <dtEntity/basemessages.h>
 #include <dtEntity/entitymanager.h>
 #include <dtEntity/nodemasks.h>
 #include <assert.h>
@@ -284,27 +283,17 @@ namespace dtEntity
    }
 
    ////////////////////////////////////////////////////////////////////////////
-   void SkyBoxComponent::OnPropertyChanged(StringId propname, Property& prop)
+   void SkyBoxComponent::Finished()
    {
-      if(propname == TextureUpId ||
-         propname == TextureDownId ||
-         propname == TextureNorthId ||
-         propname == TextureSouthId ||
-         propname == TextureEastId ||
-         propname == TextureWestId)
-      {
+      BaseClass::Finished();
 
-         osg::StateSet* stateset = mSkyboxGeode->getOrCreateStateSet();
-         osg::TextureCubeMap* skymap = readCubeMap(this);
-         if(skymap)
-         {
-            stateset->setTextureAttributeAndModes(0, skymap, osg::StateAttribute::ON);
-         }      
-      }
-      else
+      osg::StateSet* stateset = mSkyboxGeode->getOrCreateStateSet();
+      osg::TextureCubeMap* skymap = readCubeMap(this);
+      if(skymap)
       {
-         BaseClass::OnPropertyChanged(propname, prop);
-      }
+         stateset->setTextureAttributeAndModes(0, skymap, osg::StateAttribute::ON);
+      }      
+      
    }
 
    ////////////////////////////////////////////////////////////////////////////

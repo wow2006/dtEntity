@@ -20,8 +20,9 @@
 
 #include <dtEntity/stringid.h>
 #include <OpenThreads/ReadWriteMutex>
-#include <dtEntity/crc32.h>
+#include <dtEntity/hash.h>
 #include <dtEntity/dtentity_config.h>
+#include <dtEntity/singleton.h>
 #include <map>
 #include <string>
 #include <iostream>
@@ -31,8 +32,7 @@
 namespace dtEntity
 {
 
-   class DT_ENTITY_EXPORT StringIdManager
-      : public Singleton<StringIdManager>
+   class StringIdManager : public Singleton<StringIdManager>
    {
 
       typedef std::map<unsigned int, std::string> ReverseLookupMap;
@@ -70,11 +70,11 @@ namespace dtEntity
       }
 
       ////////////////////////////////////////////////////////////////////////////////
-      unsigned int Hash(const std::string& str)
+      static unsigned int Hash(const std::string& str)
       {
          const unsigned char* s = reinterpret_cast<const unsigned char*>(str.c_str());
          unsigned int hash;
-         MurmurHash3_x86_32(s, str.size(), 0, &hash);
+         MurmurHash3_x86_32(s, static_cast<int>(str.size()), 0, &hash);
          return hash;
       }
 
@@ -104,10 +104,11 @@ namespace dtEntity
       }
    };
 
+
    ////////////////////////////////////////////////////////////////////////////////
    StringId SID(const std::string& str)
    {
-      unsigned int hash = StringIdManager::GetInstance().Hash(str);
+      unsigned int hash = StringIdManager::Hash(str);
       StringIdManager::GetInstance().AddToReverseLookup(str, hash);
 #if DTENTITY_USE_STRINGS_AS_STRINGIDS
       return str;
@@ -132,7 +133,7 @@ namespace dtEntity
 #if DTENTITY_USE_STRINGS_AS_STRINGIDS
       return str;
 #else
-      unsigned int hash = StringIdManager::GetInstance().Hash(str);
+      unsigned int hash = StringIdManager::Hash(str);
       return hash;
 #endif
    }
@@ -145,5 +146,15 @@ namespace dtEntity
 #else
       return hash;
 #endif      
+   }
+
+   ////////////////////////////////////////////////////////////////////////////////
+   unsigned int SIDToUInt(StringId v)
+   {
+#if DTENTITY_USE_STRINGS_AS_STRINGIDS
+      return StringIdManager::Hash(v);
+#else
+      return v;
+#endif
    }
 }

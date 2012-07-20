@@ -13,15 +13,18 @@ if(rocketSystem !== null) {
   println("Starting libRocket demo gui");
   initRocket();
   demolist_initialized = true;
-} else
-if(typeof GUI != "undefined") {
-   println("Starting CEGUI demo gui");
-   initCegui();
-	demolist_initialized = true;
-}
-else {
+} else {
+  var ceguiSystem = getEntitySystem("CEGUI");
+  if(ceguiSystem != null) {
+    println("Starting CEGUI demo gui");
+    initCegui();
+    demolist_initialized = true;
+  }
+  else {
 	Log.error("No GUI library found! Please compile dtEntity with either libRocket or CEGUI support!");
+  }
 }
+
 
 var window;
 
@@ -91,24 +94,24 @@ function initRocket() {
  ////////////////////////////////////// Setup CEGUI /////////////////////////////////////
 
 	
-	GUI.loadScheme("WindowsLook.scheme");
-	var rootWidget = GUI.getWidget("Root");
-	GUI.setMouseCursor("WindowsLook", "MouseMoveCursor");
-	GUI.showCursor();
+	ceguiSystem.loadScheme("WindowsLook.scheme");
+	//var rootWidget = ceguiSystem.getWidget("Root");
+	ceguiSystem.setMouseCursor("WindowsLook", "MouseMoveCursor");
+	ceguiSystem.showCursor();
 	
 	////////////////////////////////////// Demo manager /////////////////////////////////////
 	var demo_items = [];
 
-	var demo_list = GUI.createWidget(rootWidget, "WindowsLook/ItemListbox", "itemlist");
-	demo_list.UnifiedAreaRect = "{{0,20},{0,20},{0,150},{0,150}}";
-	demo_list.Visible = true;
+	ceguiSystem.createWidget("Root", "WindowsLook/ItemListbox", "itemlist");
+	ceguiSystem.setWidgetProperty("itemlist", "UnifiedAreaRect", "{{0,20},{0,20},{0,150},{0,150}}");
+	ceguiSystem.setWidgetProperty("itemlist", "Visible", "true");
 
 	var currentStopCB = null;
 
-	demo_list.onSelectionChanged = function() {
+	var onSelectionChangedCB = function() {
 	  for(i = 0; i < demo_items.length; ++i) {
 		var item = demo_items[i];
-		if(item.widget.Selected == "True") { 
+		if(ceguiSystem.getWidgetProperty(item.name, "Selected") == "True") { 
 		  
 		  if(currentStopCB != null) {
 			currentStopCB();
@@ -120,35 +123,36 @@ function initRocket() {
 		}
 	  }
 	};
-
+	ceguiSystem.setCallback("itemlist", "onSelectionChanged", "onSelectionChangedCB");
 
 	addDemo = function(demoname, startfunc, stopfunc) {
-	  var widgt = GUI.createWidget(demo_list, "WindowsLook/ListboxItem", demoname);
-	  widgt.Text = demoname;
-	  widgt.Visible = true;
-	  demo_items.push({name : demoname, widget : widgt, startCB : startfunc, stopCB : stopfunc});  
+	  ceguiSystem.createWidget("itemlist", "WindowsLook/ListboxItem", demoname);
+	  ceguiSystem.setWidgetProperty(demoname, "Text", demoname);
+	  ceguiSystem.setWidgetProperty(demoname, "Visible", "true");
+	  demo_items.push({name : demoname, startCB : startfunc, stopCB : stopfunc});  
 	}
 
-	var helpWidget = null;
+	var helpWidget = false;
 
-	showHelp = function(text) {
-	  if(helpWidget != null)  {
+	var showHelp = function(text) {
+	  if(helpWidget)  {
 		hideHelp();
 	  }
-	  helpWidget = GUI.createWidget(rootWidget, "WindowsLook/StaticText", "helpWidget");
-	  helpWidget.Text = text;
-	  helpWidget.UnifiedAreaRect = "{{0.02,0},{0.7,0},{0.98,0},{0.98,0}}";
-	  helpWidget.FrameEnabled = "False";
-	  helpWidget.Alpha = "0.7";
-	  helpWidget.Font = "DejaVuSans-10";
-	  helpWidget.VertFormatting = "TopAligned";
-	  helpWidget.MousePassThroughEnabled = "True";
+	  helpWidget = true;
+	  ceguiSystem.createWidget("Root", "WindowsLook/StaticText", "helpWidget");
+	  ceguiSystem.setWidgetProperty("helpWidget", "Text", text);
+	  ceguiSystem.setWidgetProperty("helpWidget", "UnifiedAreaRect", "{{0.02,0},{0.7,0},{0.98,0},{0.98,0}}");
+	  ceguiSystem.setWidgetProperty("helpWidget", "FrameEnabled", "False");
+	  ceguiSystem.setWidgetProperty("helpWidget", "Alpha", "0.7");
+	  ceguiSystem.setWidgetProperty("helpWidget", "Font", "DejaVuSans-10");
+	  ceguiSystem.setWidgetProperty("helpWidget", "VertFormatting", "TopAligned");
+	  ceguiSystem.setWidgetProperty("helpWidget", "MousePassThroughEnabled", "True");
 	}
 
 	hideHelp = function() {
-	  GUI.destroyWidget(helpWidget);
-	  helpWidget = null;
+	  ceguiSystem.destroyWidget("helpWidget");
+	  helpWidget = false;
 	}
-	
+		
 	return true;
 }

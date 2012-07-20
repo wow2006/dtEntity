@@ -25,11 +25,9 @@
 #include <dtEntity/export.h>
 #include <dtEntity/defaultentitysystem.h>
 #include <dtEntity/component.h>
-#include <dtEntity/property.h>
+#include <dtEntity/dynamicproperty.h>
 #include <dtEntity/stringid.h>
 #include <dtEntity/scriptaccessor.h>
-#include <osg/Group>
-#include <osgDB/FileUtils>
 
 namespace dtEntity
 {
@@ -47,7 +45,6 @@ namespace dtEntity
       virtual ~OSGAnimationComponent();
 
       virtual ComponentType GetType() const { return TYPE; }
-      virtual void OnPropertyChanged(StringId propname, Property& prop);
       virtual void OnAddedToEntity(Entity& entity);
 
       osgAnimation::BasicAnimationManager* GetAnimationManager() const
@@ -67,8 +64,9 @@ namespace dtEntity
    private:
 
       osg::ref_ptr<osgAnimation::BasicAnimationManager> mAnimationManager;
-      dtEntity::BoolProperty mEnabled;
       Entity* mEntity;
+      DynamicBoolProperty mEnabled;
+      bool mEnabledVal;      
  
    };
 
@@ -87,8 +85,9 @@ namespace dtEntity
       static const StringId EnabledId;
 
       OSGAnimationSystem(EntityManager& em);
+      ~OSGAnimationSystem();
+
       void OnMeshChanged(const Message&);
-      virtual void OnPropertyChanged(StringId propname, Property& prop);
 
       void SetVertexShader(const std::string& v) { mVertexShader.Set(v); }
       std::string GetVertexShader() const { return mVertexShader.Get(); }
@@ -115,6 +114,7 @@ namespace dtEntity
       MessageFunctor mMeshChangedFunctor;
       StringProperty mVertexShader;
       StringProperty mFragmentShader;
-      dtEntity::BoolProperty mEnabled;
+      bool mEnabledVal;
+      dtEntity::DynamicBoolProperty mEnabled;
    };
 }
