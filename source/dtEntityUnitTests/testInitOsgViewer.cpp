@@ -21,12 +21,11 @@
 #include <UnitTest++.h>
 #include <dtEntity/core.h>
 #include <dtEntity/core.h>
-#include <dtEntity/osgsysteminterface.h>
+#include <dtEntityOSG/osgsysteminterface.h>
 #include <dtEntity/applicationcomponent.h>
 #include <dtEntity/componentpluginmanager.h>
 #include <dtEntity/entitymanager.h>
-#include <dtEntity/windowmanager.h>
-#include <dtEntity/initosgviewer.h>
+#include <dtEntityOSG/initosgviewer.h>
 #include <osgViewer/Viewer>
 #include <osg/ShapeDrawable>
 #include <osg/Geode>
@@ -55,7 +54,7 @@ TEST(InitOsgViewer)
    args[0] = getenv("DTENTITY_BASEASSETS");
    args[1] = getenv("DTENTITY_PROJECTASSETS");
 
-   bool success = dtEntity::InitOSGViewer(2, args, viewer, em, true, true, true, root);
+   bool success = dtEntityOSG::InitOSGViewer(2, args, viewer, em, true, true, true, root);
    CHECK(success);
 
    CHECK(em.HasEntitySystem(dtEntity::SID("Application")));
@@ -70,7 +69,7 @@ TEST(InitOsgViewer)
    CHECK(em.HasEntitySystem(dtEntity::SID("LayerAttachPoint")));
    CHECK(em.HasEntitySystem(dtEntity::SID("Layer")));
 
-   dtEntity::OSGSystemInterface* iface = static_cast<dtEntity::OSGSystemInterface*>(dtEntity::GetSystemInterface());
+   dtEntityOSG::OSGSystemInterface* iface = static_cast<dtEntityOSG::OSGSystemInterface*>(dtEntity::GetSystemInterface());
    // check if passed root node is actually used as root node
    CHECK(iface->GetPrimaryView()->getSceneData() == root);
 

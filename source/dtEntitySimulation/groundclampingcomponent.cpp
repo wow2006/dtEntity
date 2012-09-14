@@ -20,11 +20,10 @@
 
 #include <dtEntitySimulation/groundclampingcomponent.h>
 
-#include <dtEntity/cameracomponent.h>
 #include <dtEntity/entity.h>
-#include <dtEntity/layerattachpointcomponent.h>
+#include <dtEntityOSG/layerattachpointcomponent.h>
 #include <dtEntity/nodemasks.h>
-#include <dtEntity/layercomponent.h>
+#include <dtEntityOSG/layercomponent.h>
 #include <dtEntity/mapcomponent.h>
 #include <dtEntity/stringid.h>
 #include <dtEntity/systemmessages.h>
@@ -148,15 +147,16 @@ namespace dtEntitySimulation
       }
       else
       {
-         dtEntity::CameraSystem* camsys;
-         GetEntityManager().GetEntitySystem(dtEntity::CameraComponent::TYPE, camsys);
+         dtEntityOSG::CameraSystem* camsys;
+         bool success = GetEntityManager().GetES(camsys);
+         assert(success);
          if(camsys->GetNumComponents() != 0)
          {
             mCamera = camsys->begin()->second;
          }
       }
 
-      SetIntersectLayer(dtEntity::LayerAttachPointSystem::DefaultLayerId);
+      SetIntersectLayer(dtEntityOSG::LayerAttachPointSystem::DefaultLayerId);
 
    }
 
@@ -211,9 +211,9 @@ namespace dtEntitySimulation
    void GroundClampingSystem::SetIntersectLayer(dtEntity::StringId layername)
    {
       mIntersectLayerVal = layername;
-      dtEntity::LayerAttachPointSystem* layersys;
-      GetEntityManager().GetEntitySystem(dtEntity::LayerAttachPointComponent::TYPE, layersys);
-      dtEntity::LayerAttachPointComponent* c;
+      dtEntityOSG::LayerAttachPointSystem* layersys;
+      GetEntityManager().GetEntitySystem(dtEntityOSG::LayerAttachPointComponent::TYPE, layersys);
+      dtEntityOSG::LayerAttachPointComponent* c;
       if(layersys->GetByName(layername, c))
       {
          mRootNode = c->GetGroup();
@@ -329,7 +329,7 @@ namespace dtEntitySimulation
             continue;
          }
 
-         dtEntity::TransformComponent* transformcomp = component->GetTransformComponent();
+         dtEntityOSG::TransformComponent* transformcomp = component->GetTransformComponent();
          assert(transformcomp != NULL);
          osg::Vec3d translation = transformcomp->GetTranslation();
 
@@ -421,7 +421,7 @@ namespace dtEntitySimulation
 
       dtEntity::StringId mode = component->GetClampingMode();
 
-      dtEntity::TransformComponent* transformcomp = component->GetTransformComponent();
+      dtEntityOSG::TransformComponent* transformcomp = component->GetTransformComponent();
       osg::Vec3d translation = transformcomp->GetTranslation();
 
       float voffset = component->GetVerticalOffset();

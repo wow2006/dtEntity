@@ -25,5 +25,5 @@
 namespace dtEntity
 {
    class ComponentPluginManager;
-   void DT_ENTITY_EXPORT RegisterStandardFactories(ComponentPluginManager& pluginManager);
+   void DT_ENTITY_EXPORT RegisterStandardFactories(dtEntity::ComponentPluginManager& pluginManager);
 }

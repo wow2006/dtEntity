@@ -19,17 +19,17 @@
 */
 
 #include <dtEntityQtWidgets/spawnerstore.h>
-#include <dtEntity/applicationcomponent.h>
-#include <dtEntity/cameracomponent.h>
 #include <dtEntity/commandmessages.h>
+#include <dtEntity/core.h>
 #include <dtEntity/entity.h>
 #include <dtEntity/entitymanager.h>
-#include <dtEntity/layerattachpointcomponent.h>
+#include <dtEntity/systeminterface.h>
 #include <dtEntity/mapcomponent.h>
 #include <dtEntity/nodemasks.h>
 #include <dtEntity/spawner.h>
 #include <dtEntity/systemmessages.h>
-#include <dtEntity/windowmanager.h>
+#include <dtEntity/windowinterface.h>
+#include <dtEntityOSG/layerattachpointcomponent.h>
 #include <dtEntityQtWidgets/messages.h>
 #include <osgUtil/LineSegmentIntersector>
 #include <osgViewer/View>
@@ -266,7 +266,7 @@ namespace dtEntityQtWidgets
       QListWidgetItem* item;
       if(iconpath != "")
       {
-         QString iconrealpath = osgDB::findDataFile(iconpath.toStdString()).c_str();
+         QString iconrealpath = dtEntity::GetSystemInterface()->FindDataFile(iconpath.toStdString()).c_str();
          QIcon icon(iconrealpath);
          item = new QListWidgetItem(icon, name, mSpawnerList);
       }
@@ -402,14 +402,13 @@ namespace dtEntityQtWidgets
          return;
       }
 
-      dtEntity::ApplicationSystem* appsys;
-      mEntityManager->GetEntitySystem(dtEntity::ApplicationSystem::TYPE, appsys);
+
+      dtEntity::WindowInterface* iface = dtEntity::GetWindowInterface();
+      osg::Vec3 pickray = iface->GetPickRay("defaultView", pos.x(), pos.y());
       
-      osg::Vec3 pickray = appsys->GetWindowManager()->GetPickRay("defaultView", pos.x(), pos.y());
-      
-      dtEntity::CameraComponent* cam;
-      mEntityManager->GetComponent(mtsystem->GetEntityIdByUniqueId("cam_0"), cam);
-      osg::Vec3 start = cam->GetPosition();
+      dtEntity::Component* cam;
+      mEntityManager->GetComponent(mtsystem->GetEntityIdByUniqueId("cam_0"), dtEntity::SID("Camera"), cam);
+      osg::Vec3d start = cam->GetVec3d(dtEntity::SID("Position"));
      
       osg::ref_ptr<osgUtil::LineSegmentIntersector> lsi = new osgUtil::LineSegmentIntersector(start, start + pickray * 100000);
 
@@ -417,9 +416,9 @@ namespace dtEntityQtWidgets
       iv.setTraversalMask(dtEntity::NodeMasks::TERRAIN);
       iv.setUseKdTreeWhenAvailable(true);
 
-      dtEntity::LayerAttachPointSystem* layersys;
-      mEntityManager->GetEntitySystem(dtEntity::LayerAttachPointComponent::TYPE, layersys);
-      dtEntity::LayerAttachPointComponent* sceneLayer = layersys->GetDefaultLayer();
+      dtEntityOSG::LayerAttachPointSystem* layersys;
+      mEntityManager->GetEntitySystem(dtEntityOSG::LayerAttachPointComponent::TYPE, layersys);
+      dtEntityOSG::LayerAttachPointComponent* sceneLayer = layersys->GetDefaultLayer();
       osg::Node* sceneNode = sceneLayer->GetGroup();
       sceneNode->accept(iv);
 
@@ -446,10 +445,11 @@ namespace dtEntityQtWidgets
          mc->SetMapName(targetMap.toStdString());
       }
 
-      dtEntity::TransformComponent* tcomp;
-      if(mEntityManager->GetComponent(entity->GetId(), tcomp, true))
+      dtEntity::Component* tcomp;
+      if(mEntityManager->GetComponent(entity->GetId(), dtEntity::SID("Transform"), tcomp, true) &&
+         tcomp->Has(dtEntity::SID("Position")))
       {
-         tcomp->SetTranslation(spawnPosition);
+         tcomp->SetVec3d(dtEntity::SID("Position"), spawnPosition);
       }
 
       {

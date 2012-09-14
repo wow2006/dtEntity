@@ -21,21 +21,18 @@
 *
 * Martin Scheffler
 */
-#include <dtEntity/applicationcomponent.h>
 #include <dtEntity/component.h>
-#include <dtEntity/initosgviewer.h>
+#include <dtEntity/core.h>
+#include <dtEntityOSG/initosgviewer.h>
 #include <dtEntity/defaultentitysystem.h>
 #include <dtEntity/entity.h>
 #include <dtEntity/entitymanager.h>
 #include <dtEntity/mapcomponent.h>
 #include <dtEntity/spawner.h>
 #include <dtEntity/stringid.h>
-#include <dtEntity/staticmeshcomponent.h>
+#include <dtEntity/systeminterface.h>
 #include <dtEntity/systemmessages.h>
-#include <dtEntity/windowmanager.h>
-#include <dtEntityPhysX/pagedterraincullvisitor.h>
-#include <dtEntityPhysX/physxcomponent.h>
-#include <dtEntityPhysX/physxpagedterraincomponent.h>
+#include <dtEntityOSG/staticmeshcomponent.h>
 #include <osgViewer/Renderer>
 #include <osgViewer/Viewer>
 #include <osgViewer/CompositeViewer>
@@ -146,7 +143,7 @@ public:
 
       assert(mEntity != NULL);
 
-      StaticMeshComponent* smc; 
+      dtEntityOSG::StaticMeshComponent* smc;
       if(!mEntity->GetComponent(smc))
       {
          LOG_ERROR("Error setting up wheel component: Please add mesh component first");
@@ -233,7 +230,7 @@ int main(int argc, char** argv)
    osgViewer::Viewer viewer(arguments);
    dtEntity::EntityManager em;
    
-   if(!dtEntity::InitOSGViewer(argc, argv, viewer, em))
+   if(!dtEntityOSG::InitOSGViewer(argc, argv, viewer, em))
    {
       LOG_ERROR("Error setting up dtEntity!");
       return 0;
@@ -244,15 +241,13 @@ int main(int argc, char** argv)
    em.GetEntitySystem(dtEntity::MapComponent::TYPE, mSystem);
    mSystem->LoadScene("Scenes/wheels.dtescene");
 
-
-   dtEntity::ApplicationSystem* appsys;
-   em.GetES(appsys);
+   dtEntity::SystemInterface* iface = dtEntity::GetSystemInterface();
 
    while (!viewer.done())
    {
       viewer.advance(DBL_MAX);
       viewer.eventTraversal();
-      appsys->EmitTickMessagesAndQueuedMessages();
+      iface->EmitTickMessagesAndQueuedMessages();
       viewer.updateTraversal();
       viewer.renderingTraversals();
    }

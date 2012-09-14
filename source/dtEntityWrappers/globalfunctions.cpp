@@ -19,8 +19,11 @@
 */
 
 #include <dtEntityWrappers/globalfunctions.h>
+
+#include <dtEntity/core.h>
 #include <dtEntity/entitymanager.h>
 #include <dtEntity/profile.h>
+#include <dtEntity/systeminterface.h>
 #include <dtEntityWrappers/entitymanagerwrapper.h>
 #include <dtEntityWrappers/v8helpers.h>
 #include <dtEntityWrappers/scriptcomponent.h>
@@ -66,7 +69,7 @@ namespace dtEntityWrappers
          return ThrowError("usage: findDataFile(string path)");
       }
       std::string path = ToStdString(args[0]);
-      std::string result = osgDB::findDataFile(path);
+      std::string result = dtEntity::GetSystemInterface()->FindDataFile(path);
       return ToJSString(result);
    }
 
@@ -142,6 +145,18 @@ namespace dtEntityWrappers
    }
 
    ////////////////////////////////////////////////////////////////////////////////
+   Handle<Value> SID(const Arguments& args)
+   {
+      return WrapSID(dtEntity::SID(ToStdString(args[0])));
+   }
+
+   ////////////////////////////////////////////////////////////////////////////////
+   Handle<Value> GetStringFromSID(const Arguments& args)
+   {
+      return String::New(dtEntity::GetStringFromSID(UnwrapSID(args[0])).c_str());
+   }
+
+   ////////////////////////////////////////////////////////////////////////////////
    void RegisterGlobalFunctions(ScriptSystem* ss, Handle<Context> context)
    {
       //HandleScope handle_scope;
@@ -153,6 +168,8 @@ namespace dtEntityWrappers
       context->Global()->Set(String::New("println"), FunctionTemplate::New(PrintLN)->GetFunction());
       context->Global()->Set(String::New("getDataFilePathList"), FunctionTemplate::New(GetDataFilePathList)->GetFunction());
       context->Global()->Set(String::New("setDataFilePathList"), FunctionTemplate::New(SetDataFilePathList)->GetFunction());
+      context->Global()->Set(String::New("sid"), FunctionTemplate::New(SID)->GetFunction());
+      context->Global()->Set(String::New("getStringFromSid"), FunctionTemplate::New(GetStringFromSID)->GetFunction());
       context->Global()->Set(String::New("startProfile"), FunctionTemplate::New(StartProfile)->GetFunction());
       context->Global()->Set(String::New("stopProfile"), FunctionTemplate::New(StopProfile)->GetFunction());
    }

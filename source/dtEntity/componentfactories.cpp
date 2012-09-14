@@ -21,48 +21,22 @@
 #include <dtEntity/componentfactories.h>
 
 #include <dtEntity/dtentity_config.h>
-#include <dtEntity/cameracomponent.h>
 #include <dtEntity/componentplugin.h>
 #include <dtEntity/componentpluginmanager.h>
 #include <dtEntity/dynamicscomponent.h>
-#include <dtEntity/layercomponent.h>
-#include <dtEntity/layerattachpointcomponent.h>
-#include <dtEntity/lightcomponent.h>
-#include <dtEntity/osganimationcomponent.h>
-#include <dtEntity/pickshapecomponent.h>
-#include <dtEntity/shadercomponent.h>
-#include <dtEntity/shadowcomponent.h>
-#include <dtEntity/skyboxcomponent.h>
-#include <dtEntity/textlabelcomponent.h>
-#include <dtEntity/texturelabelcomponent.h>
 
 
 #if BUILD_OPENAL
   #include <dtEntity/soundcomponent.h>
 #endif
 
-#if BUILD_CAL3D
-  #include <dtEntity/animationcomponent.h>
-#endif
 
 namespace dtEntity
 {
 
-	void RegisterStandardFactories(ComponentPluginManager& pluginManager)
+   void RegisterStandardFactories(ComponentPluginManager& pluginManager)
    {
       pluginManager.AddFactory(new ComponentPluginFactoryImpl<DynamicsSystem>("Dynamics"));
-      pluginManager.AddFactory(new ComponentPluginFactoryImpl<PickShapeSystem>("PickShape"));
-      pluginManager.AddFactory(new ComponentPluginFactoryImpl<SkyBoxSystem>("SkyBox"));
-      pluginManager.AddFactory(new ComponentPluginFactoryImpl<ShadowSystem>("Shadow"));
-      pluginManager.AddFactory(new ComponentPluginFactoryImpl<ShaderSystem>("Shader"));
-      pluginManager.AddFactory(new ComponentPluginFactoryImpl<TextLabelSystem>("TextLabel"));
-      pluginManager.AddFactory(new ComponentPluginFactoryImpl<TextureLabelSystem>("TextureLabel"));
-      pluginManager.AddFactory(new ComponentPluginFactoryImpl<OSGAnimationSystem>("OSGAnimation"));
-      pluginManager.AddFactory(new ComponentPluginFactoryImpl<LightSystem>("Light"));
-      
-#if BUILD_CAL3D
-      pluginManager.AddFactory(new ComponentPluginFactoryImpl<AnimationSystem>("Animation"));
-#endif
 
 #if BUILD_OPENAL
       pluginManager.AddFactory(new ComponentPluginFactoryImpl<SoundSystem>("Sound"));

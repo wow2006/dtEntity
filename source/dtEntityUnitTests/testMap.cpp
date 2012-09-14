@@ -20,11 +20,11 @@
 
 
 #include <UnitTest++.h>
-#include <dtEntity/initosgviewer.h>
+#include <dtEntity/init.h>
 #include <dtEntity/mapcomponent.h>
 #include <dtEntity/spawner.h>
 #include <dtEntity/entitymanager.h> 
-#include <dtEntity/positionattitudetransformcomponent.h>
+#include <dtEntityOSG/positionattitudetransformcomponent.h>
 #include <osgDB/FileUtils>
 
 using namespace UnitTest;
@@ -35,7 +35,7 @@ struct MapFixture
    MapFixture()
    {
       SetupDataPaths(0, NULL, true);
-      AddDefaultEntitySystemsAndFactories(0, NULL, mEntityManager); 
+      dtEntity::AddDefaultEntitySystemsAndFactories(0, NULL, mEntityManager);
       mEntityManager.GetEntitySystem(MapComponent::TYPE, mMapSystem);
    }
 
@@ -181,7 +181,7 @@ TEST_FIXTURE(MapFixture, SaveMapTest)
       mMapSystem->AddEmptyMap(projectassets, mapname);
       dtEntity::Entity* entity;
       mEntityManager.CreateEntity(entity);
-      dtEntity::PositionAttitudeTransformComponent* transcomp;
+      dtEntityOSG::PositionAttitudeTransformComponent* transcomp;
       entity->CreateComponent(transcomp);
       transcomp->SetPosition(osg::Vec3(1,2,3));
       dtEntity::PropertyArray children;
@@ -214,7 +214,7 @@ TEST_FIXTURE(MapFixture, SaveMapTest)
       CHECK(canFindEntity);
       if(!canFindEntity) return;
 
-      dtEntity::PositionAttitudeTransformComponent* transcomp;
+      dtEntityOSG::PositionAttitudeTransformComponent* transcomp;
       entity->GetComponent(transcomp);
       osg::Vec3 pos = transcomp->GetPosition();
       CHECK_CLOSE(pos[0], 1, 0.1);

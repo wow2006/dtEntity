@@ -21,12 +21,15 @@
 
 #include <UnitTest++.h>
 
+#include <dtEntity/core.h>
+#include <dtEntityOSG/osgsysteminterface.h>
 #include <dtEntity/mapcomponent.h>
 #include <dtEntity/spawner.h>
 #include <dtEntity/applicationcomponent.h>
+#include <dtEntity/init.h>
 #include <dtEntity/entitymanager.h>
 #include <osgDB/FileUtils>
-#include <dtEntity/initosgviewer.h>
+#include <dtEntityOSG/initosgviewer.h>
 
 using namespace UnitTest;
 using namespace dtEntity;
@@ -36,6 +39,7 @@ struct SceneFixture
    SceneFixture()
    {
       SetupDataPaths(0, NULL, true);
+      SetSystemInterface(new dtEntityOSG::OSGSystemInterface(mEntityManager.GetMessagePump()));
       AddDefaultEntitySystemsAndFactories(0, NULL, mEntityManager); 
       mEntityManager.GetEntitySystem(MapComponent::TYPE, mMapSystem);
    }

@@ -22,12 +22,11 @@
 #include <osgViewer/Viewer>
 #include <osgViewer/ViewerEventHandlers>
 #include <osgViewer/GraphicsWindow>
-
-#include <dtEntity/inputhandler.h>
 #include <dtEntity/log.h>
 #include <iostream>
 #include <osg/Version>
 #include <QtCore/QtDebug>
+#include <dtEntityOSG/osginputinterface.h>
 
 namespace dtEntityQtWidgets
 {
@@ -478,7 +477,7 @@ namespace dtEntityQtWidgets
    //////////////////////////////////////////////////////////////////////////////////
    void OSGAdapterWidget::enterEvent(QEvent* event)
    {
-      dtEntity::MouseEnterLeaveEvent* evt = new dtEntity::MouseEnterLeaveEvent();
+      dtEntityOSG::MouseEnterLeaveEvent* evt = new dtEntityOSG::MouseEnterLeaveEvent();
       evt->mFocused = true;
       mGraphicsWindow->getEventQueue()->userEvent(evt);
    }
@@ -493,7 +492,7 @@ namespace dtEntityQtWidgets
       }
       mPressedKeys.clear();
 
-      dtEntity::MouseEnterLeaveEvent* evt = new dtEntity::MouseEnterLeaveEvent();
+      dtEntityOSG::MouseEnterLeaveEvent* evt = new dtEntityOSG::MouseEnterLeaveEvent();
       evt->mFocused = false;
       mGraphicsWindow->getEventQueue()->userEvent(evt);
    }

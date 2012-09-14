@@ -22,14 +22,12 @@
 
 
 #include <dtEntity/core.h>
-#include <dtEntity/osgsysteminterface.h>
-#include <dtEntity/applicationcomponent.h>
 #include <dtEntity/commandmessages.h>
 #include <dtEntity/entity.h>
-#include <dtEntity/inputhandler.h>
+#include <dtEntity/inputinterface.h>
 #include <dtEntity/stringid.h>
+#include <dtEntity/systeminterface.h>
 #include <dtEntity/systemmessages.h>
-#include <dtEntity/windowmanager.h>
 #include <dtEntityWrappers/componentwrapper.h>
 #include <dtEntityWrappers/entitymanagerwrapper.h>
 #include <dtEntityWrappers/globalfunctions.h>
@@ -45,10 +43,6 @@
 #include <sstream>
 #include <v8.h>
 #include <v8-debug.h>
-
-#include <osg/Version>
-
-#define OSG_2_9_VER (defined(OSG_VERSION_MAJOR) && defined(OSG_VERSION_MINOR) && OSG_VERSION_MAJOR >= 2 && OSG_VERSION_MINOR > 8)
 
 using namespace v8;
 
@@ -162,30 +156,16 @@ namespace dtEntityWrappers
 
       tmplt->SetClassName(String::New("ScriptSystem"));
 
-      dtEntity::ApplicationSystem* as;
-      if(GetEntityManager().GetEntitySystem(dtEntity::ApplicationSystem::TYPE, as))
+      context->Global()->Set(String::New("Screen"), WrapScreen(this));
+
+      dtEntity::InputInterface* ipiface = dtEntity::GetInputInterface();
+      if(ipiface)
       {
-         dtEntity::OSGSystemInterface* iface = static_cast<dtEntity::OSGSystemInterface*>(dtEntity::GetSystemInterface());
-         osgViewer::GraphicsWindow* window = iface->GetPrimaryWindow();
-
-         if(window)
-         {
-            context->Global()->Set(String::New("Screen"), WrapScreen(this, iface->GetPrimaryView(), window));
-         }
-
-         if(as->GetWindowManager())
-         {
-            dtEntity::InputHandler* input = &as->GetWindowManager()->GetInputHandler();
-            if(input)
-            {
-               context->Global()->Set(String::New("Input"), WrapInputHandler(GetGlobalContext(), input));
-               context->Global()->Set(String::New("Axis"), WrapAxes(input));
-               context->Global()->Set(String::New("Key"), WrapKeys(input));
-            }
-         }
+         context->Global()->Set(String::New("Input"), WrapInputInterface(GetGlobalContext(), ipiface));
+         context->Global()->Set(String::New("Axis"), WrapAxes(ipiface));
+         context->Global()->Set(String::New("Key"), WrapKeys(ipiface));
       }
 
-      context->Global()->Set(String::New("MouseWheelState"), WrapMouseWheelStates());
       context->Global()->Set(String::New("TouchPhase"), WrapTouchPhases());
       context->Global()->Set(String::New("Priority"), WrapPriorities());
       context->Global()->Set(String::New("Order"), WrapPriorities());
@@ -422,9 +402,9 @@ namespace dtEntityWrappers
          
          osgDB::FilePathList currentPathList;
          currentPathList.push_back(autostartpath.str());
-         const std::string absPath = osgDB::findDataFile(autostartpath.str());
+         const std::string absPath = dtEntity::GetSystemInterface()->FindDataFile(autostartpath.str());
 
-         if(!osgDB::fileExists(absPath))
+         if(!dtEntity::GetSystemInterface()->FileExists(absPath))
          {
             continue;
          }         

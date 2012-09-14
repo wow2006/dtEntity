@@ -22,20 +22,18 @@
 * Martin Scheffler
 */
 #include <osgDB/FileUtils>
-#include <dtEntity/applicationcomponent.h>
 #include <dtEntity/component.h>
-#include <dtEntity/layerattachpointcomponent.h>
+#include <dtEntity/core.h>
 #include <dtEntity/defaultentitysystem.h>
 #include <dtEntity/entity.h>
 #include <dtEntity/entitymanager.h>
-#include <dtEntity/initosgviewer.h>
+#include <dtEntityOSG/initosgviewer.h>
+#include <dtEntityOSG/layerattachpointcomponent.h>
 #include <dtEntity/mapcomponent.h>
-#include <dtEntity/core.h>
-#include <dtEntity/osgsysteminterface.h>
-#include <dtEntity/positionattitudetransformcomponent.h>
-#include <dtEntity/skyboxcomponent.h>
+#include <dtEntityOSG/positionattitudetransformcomponent.h>
 #include <dtEntity/spawner.h>
 #include <dtEntity/stringid.h>
+#include <dtEntity/systeminterface.h>
 #include <dtEntity/systemmessages.h>
 #include <osgGA/TrackballManipulator>
 #include <osgViewer/CompositeViewer>
@@ -51,7 +49,7 @@
 // small helper function to get 2D position of an entity
 void GetEntityTranslation(dtEntity::EntityManager& em, dtEntity::EntityId eid, osg::Vec2& translation)
 {
-   dtEntity::PositionAttitudeTransformComponent* tcomp;
+   dtEntityOSG::PositionAttitudeTransformComponent* tcomp;
    bool found = em.GetComponent(eid, tcomp);
    assert(found);
    osg::Vec3 t = tcomp->GetPosition();
@@ -146,7 +144,7 @@ public:
          mcomp->SetVec2(MovementComponent::SpeedId, speed);
          mcomp->SetForce(osg::Vec2());
 
-         dtEntity::PositionAttitudeTransformComponent* tcomp;
+         dtEntityOSG::PositionAttitudeTransformComponent* tcomp;
          bool found = GetEntityManager().GetComponent(id, tcomp);
          assert(found);
          osg::Vec3 trans = tcomp->GetPosition();
@@ -266,14 +264,11 @@ int main(int argc, char** argv)
    
    osg::Group* root = new osg::Group();
 
-   if(!dtEntity::InitOSGViewer(argc, argv, viewer, em, true, true, true, root))
+   if(!dtEntityOSG::InitOSGViewer(argc, argv, viewer, em, true, true, true, root))
    {
       LOG_ERROR("Error setting up dtEntity!");
       return 0;
    }
-
-   dtEntity::ApplicationSystem* appsys;
-   em.GetEntitySystem(dtEntity::ApplicationSystem::TYPE, appsys);
    
    // give entity system access to the scene graph
    em.AddEntitySystem(*new MovementSystem(em));
@@ -315,7 +310,7 @@ int main(int argc, char** argv)
       bool success = spawner->Spawn(*spawned);
       assert(success);
       // set a start position
-      dtEntity::PositionAttitudeTransformComponent* trans;
+      dtEntityOSG::PositionAttitudeTransformComponent* trans;
       success = em.GetComponent(spawned->GetId(), trans);
       assert(success);
       trans->SetPosition(osg::Vec3(i * 3, 0.0f, 0.5f));
@@ -334,18 +329,18 @@ int main(int argc, char** argv)
       lastEntity = spawned->GetId();      
    }
 
-   dtEntity::OSGSystemInterface* iface = static_cast<dtEntity::OSGSystemInterface*>(dtEntity::GetSystemInterface());
 
    // skybox screws up OSG initial position, set manually
-   iface->GetPrimaryView()->setCameraManipulator(new osgGA::TrackballManipulator());
-   iface->GetPrimaryView()->getCameraManipulator()->setHomePosition(osg::Vec3(0, -50, 5), osg::Vec3(), osg::Vec3(0,0,1),false);
-   iface->GetPrimaryView()->getCameraManipulator()->home(0);
+   viewer.setCameraManipulator(new osgGA::TrackballManipulator());
+   viewer.getCameraManipulator()->setHomePosition(osg::Vec3(0, -50, 5), osg::Vec3(), osg::Vec3(0,0,1),false);
+   viewer.getCameraManipulator()->home(0);
 
+   dtEntity::SystemInterface* iface = dtEntity::GetSystemInterface();
    while (!viewer.done())
    {
       viewer.advance(DBL_MAX);
       viewer.eventTraversal();
-      appsys->EmitTickMessagesAndQueuedMessages();
+      iface->EmitTickMessagesAndQueuedMessages();
       viewer.updateTraversal();
       viewer.renderingTraversals();
    }

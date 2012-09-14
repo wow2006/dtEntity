@@ -20,19 +20,21 @@
 
 #include <dtEntityWrappers/screenwrapper.h>
 
-#include <dtEntity/applicationcomponent.h>
-#include <dtEntity/cameracomponent.h>
+#include <dtEntity/core.h>
 #include <dtEntity/entity.h>
-#include <dtEntity/inputhandler.h>
+#include <dtEntity/inputinterface.h>
 #include <dtEntity/nodemasks.h>
-#include <dtEntity/layerattachpointcomponent.h>
-#include <dtEntity/windowmanager.h>
+#include <dtEntity/property.h>
+#include <dtEntity/systeminterface.h>
+#include <dtEntity/windowinterface.h>
 #include <dtEntityWrappers/entitymanagerwrapper.h>
 #include <dtEntityWrappers/scriptcomponent.h>
 #include <dtEntityWrappers/inputhandlerwrapper.h>
 #include <dtEntityWrappers/v8helpers.h>
 #include <iostream>
 #include <v8.h>
+#include <osg/DisplaySettings>
+#include <osg/GraphicsContext>
 
 using namespace v8;
 
@@ -51,7 +53,7 @@ namespace dtEntityWrappers
       HandleScope handle_scope;
       Handle<Context> context = info.Holder()->CreationContext();
       Handle<Value> ih = context->Global()->Get(String::New("Input"));
-      dtEntity::InputHandler* input = UnwrapInputHandler(ih);
+      dtEntity::InputInterface* input = UnwrapInputInterface(ih);
       input->SetLockCursor(value->BooleanValue());
 
    }
@@ -62,89 +64,54 @@ namespace dtEntityWrappers
       HandleScope handle_scope;
       Handle<Context> context = info.Holder()->CreationContext();
       Handle<Value> ih = context->Global()->Get(String::New("Input"));
-      dtEntity::InputHandler* input = UnwrapInputHandler(ih);
+      dtEntity::InputInterface* input = UnwrapInputInterface(ih);
       return Boolean::New(input->GetLockCursor());
    }
 
    ////////////////////////////////////////////////////////////////////////////////
    void SCRSetShowCursor(Local<String> propname, Local<Value> value, const AccessorInfo& info)
    {
-      osgViewer::GraphicsWindow* window = UnwrapScreenWindow(info.This());
-      bool showCursor = value->BooleanValue();
-      if(showCursor)
-      {
-         window->useCursor(true);
-         window->setCursor(osgViewer::GraphicsWindow::RightArrowCursor);
-      }
-      else
-      {
-         window->setCursor(osgViewer::GraphicsWindow::NoCursor);
-         window->useCursor(false);
-      }
-      
-      info.This()->Set(String::New("__USE_CURSOR__"), Boolean::New(showCursor));
+      dtEntity::GetWindowInterface()->SetShowCursor(value->BooleanValue());
    }
 
    ////////////////////////////////////////////////////////////////////////////////
    Handle<Value> SCRGetShowCursor(Local<String> propname, const AccessorInfo& info)
    {
-      if(!info.This()->Has(String::New("__USE_CURSOR__")))
-      {
-         return Boolean::New(true);
-      }
-      return info.This()->Get(String::New("__USE_CURSOR__"));
+      return Boolean::New(true);
    }
 
    ////////////////////////////////////////////////////////////////////////////////
    Handle<Value> SCRGetWidth(Local<String> propname, const AccessorInfo& info)
    {
-     osgViewer::GraphicsWindow* window = UnwrapScreenWindow(info.This());
-     int x, y, w, h;
-     window->getWindowRectangle(x, y, w, h);
-     return Integer::New(w);
+      int w, h, x, y;
+      dtEntity::GetWindowInterface()->GetWindowGeometry(0, x, y, w, h);
+      return Integer::New(w);
    }
 
    ////////////////////////////////////////////////////////////////////////////////
    Handle<Value> SCRGetHeight(Local<String> propname, const AccessorInfo& info)
    {
-     osgViewer::GraphicsWindow* window = UnwrapScreenWindow(info.This());
-     int x, y, w, h;
-     window->getWindowRectangle(x, y, w, h);
-     return Integer::New(h);
+      int w, h, x, y;
+      dtEntity::GetWindowInterface()->GetWindowGeometry(0, x, y, w, h);
+      return Integer::New(h);
    }
 
    ////////////////////////////////////////////////////////////////////////////////
    Handle<Value> SCRGetFullScreen(Local<String> propname, const AccessorInfo& info)
    {
-      osgViewer::GraphicsWindow* window = UnwrapScreenWindow(info.This());
-
-      unsigned int contextId = window->getState()->getContextID();
-      dtEntity::ApplicationSystem* appsys;
-      dtEntity::EntityManager* em = GetEntityManager(info.Holder()->CreationContext());
-      em->GetEntitySystem(dtEntity::ApplicationSystem::TYPE, appsys);
-      return Boolean::New(appsys->GetWindowManager()->GetFullscreen(contextId));
+      return Boolean::New(dtEntity::GetWindowInterface()->GetFullscreen(0));
    }
 
    ////////////////////////////////////////////////////////////////////////////////
    void SCRSetFullScreen(Local<String> propname, Local<Value> value, const AccessorInfo& info)
    {
-      osgViewer::GraphicsWindow* window = UnwrapScreenWindow(info.This());
-
-      unsigned int contextId = window->getState()->getContextID();
-      dtEntity::ApplicationSystem* appsys;
-      dtEntity::EntityManager* em = GetEntityManager(info.Holder()->CreationContext());
-      em->GetEntitySystem(dtEntity::ApplicationSystem::TYPE, appsys);
-      appsys->GetWindowManager()->SetFullscreen(contextId, value->BooleanValue());
+      dtEntity::GetWindowInterface()->SetFullscreen(0, value->BooleanValue());
    }
 
    ////////////////////////////////////////////////////////////////////////////////
    Handle<Value> SCRGetPickRay(const Arguments& args)
    {
-      dtEntity::EntityManager* em = GetEntityManager(args.This()->CreationContext());
-
-      dtEntity::ApplicationSystem* appsys;
-      em->GetEntitySystem(dtEntity::ApplicationSystem::TYPE, appsys);
-      osg::Vec3 pr = appsys->GetWindowManager()->GetPickRay("defaultView", args[0]->NumberValue(), args[1]->NumberValue());
+      dtEntity::Vec3f pr = dtEntity::GetWindowInterface()->GetPickRay("defaultView", args[0]->NumberValue(), args[1]->NumberValue());
       return WrapVec3(pr);
    }
 
@@ -170,65 +137,8 @@ namespace dtEntityWrappers
       double x = args[0]->NumberValue();
       double y = args[1]->NumberValue();
 	 
-      HandleScope scope;
-
-      dtEntity::EntityManager* em = GetEntityManager(args.This()->CreationContext());
-
-	   dtEntity::CameraSystem* camsys;
-	   em->GetEntitySystem(dtEntity::CameraComponent::TYPE, camsys);
-	   dtEntity::EntityId camid = camsys->GetCameraEntityByContextId(contextid);
-	   dtEntity::CameraComponent* camcomp;
-	   bool success = em->GetComponent(camid, camcomp);
-	   if(!success)
-	   {
-	 	  return Null();
-	   }
-	   osg::Vec3d from = camcomp->GetPosition();
-
-	   dtEntity::ApplicationSystem* appsys;
-      em->GetEntitySystem(dtEntity::ApplicationSystem::TYPE, appsys);
-      
-      osg::Vec3 pr = appsys->GetWindowManager()->GetPickRay("defaultView", x, y, true);
-      
-      osg::Vec3d to = from + pr * 10000;
-
-      osg::ref_ptr<osgUtil::LineSegmentIntersector> lsi;
-      lsi = new osgUtil::LineSegmentIntersector(from, to);
-
-      osgUtil::IntersectionVisitor iv(lsi.get());
-      iv.setUseKdTreeWhenAvailable(true);
-      iv.setTraversalMask(nodemask); 
-
-      dtEntity::LayerAttachPointSystem* laps;
-      em->GetEntitySystem(dtEntity::LayerAttachPointComponent::TYPE, laps);
-      dtEntity::LayerAttachPointComponent* sceneLayer = laps->GetDefaultLayer();
-      sceneLayer->GetGroup()->accept(iv);
-
-      if(!lsi->containsIntersections())
-      {
-         return Null();
-      }
-
-      osgUtil::LineSegmentIntersector::Intersections::iterator i;
-
-      for(i = lsi->getIntersections().begin(); i != lsi->getIntersections().end(); ++i)
-      {
-         osgUtil::LineSegmentIntersector::Intersection isect = *i;
-         for(osg::NodePath::const_reverse_iterator j = isect.nodePath.rbegin(); j != isect.nodePath.rend(); ++j)
-         {
-            const osg::Node* node = *j;
-            const osg::Referenced* referenced = node->getUserData();
-            if(referenced == NULL) continue;
-            const dtEntity::Entity* entity = dynamic_cast<const dtEntity::Entity*>(referenced);
-            if(entity != NULL)
-            {			     
-               return Uint32::New(entity->GetId());			      
-            }
-         }
-      }
-
-      return Null();
-      
+      dtEntity::EntityId eid = dtEntity::GetWindowInterface()->PickEntity(x, y, nodemask, contextid);
+      return Uint32::New(eid);      
    }
 
    ////////////////////////////////////////////////////////////////////////////////
@@ -240,35 +150,23 @@ namespace dtEntityWrappers
          return ThrowError("usage: intersect(float[3] from, float[3] to, [int32 nodemask])");
       }
 
-      HandleScope scope;
-
-      dtEntity::EntityManager* entityManager = GetEntityManager(args.This()->CreationContext());
-
-      osg::Vec3d from = UnwrapVec3(args[0]);
-      osg::Vec3d to = UnwrapVec3(args[1]);
-
-      osg::ref_ptr<osgUtil::LineSegmentIntersector> lsi;
-      lsi = new osgUtil::LineSegmentIntersector(from, to);
-
-      osgUtil::IntersectionVisitor iv(lsi.get());
-      iv.setUseKdTreeWhenAvailable(true);
-
+      unsigned int nodemask = dtEntity::NodeMasks::PICKABLE | dtEntity::NodeMasks::TERRAIN;
       if(args.Length() >= 3)
       {
-         iv.setTraversalMask(args[2]->Uint32Value());
+         nodemask = args[2]->Uint32Value();
       }
-      else
-      {
-         iv.setTraversalMask(dtEntity::NodeMasks::PICKABLE | dtEntity::NodeMasks::TERRAIN);
-      }
-      dtEntity::LayerAttachPointSystem* laps;
-      entityManager->GetEntitySystem(dtEntity::LayerAttachPointComponent::TYPE, laps);
-      dtEntity::LayerAttachPointComponent* sceneLayer = laps->GetDefaultLayer();
-      sceneLayer->GetGroup()->accept(iv);
+      
+      
+      dtEntity::Vec3d from = UnwrapVec3(args[0]);
+      dtEntity::Vec3d to = UnwrapVec3(args[1]);
 
+      dtEntity::SystemInterface::Intersections isects;
+      bool found = dtEntity::GetSystemInterface()->GetIntersections(from, to, isects, nodemask);
+
+      HandleScope scope;
       Handle<Array> ret = Array::New();
 
-      if(!lsi->containsIntersections())
+      if(!found)
       {
          return scope.Close(ret);
       }
@@ -277,53 +175,40 @@ namespace dtEntityWrappers
       Handle<String> normal = String::New("Normal");
       Handle<String> position = String::New("Position");
 
-      osgUtil::LineSegmentIntersector::Intersections::iterator i;
       unsigned int count = 0;
-      for(i = lsi->getIntersections().begin(); i != lsi->getIntersections().end(); ++i)
+      for(dtEntity::SystemInterface::Intersections::const_iterator i = isects.begin(); i != isects.end(); ++i)
       {
-         osgUtil::LineSegmentIntersector::Intersection isect = *i;
-         for(osg::NodePath::const_iterator j = isect.nodePath.begin(); j != isect.nodePath.end(); ++j)
-         {
-            const osg::Node* node = *j;
-            const osg::Referenced* referenced = node->getUserData();
-            if(referenced == NULL) continue;
-            const dtEntity::Entity* entity = dynamic_cast<const dtEntity::Entity*>(referenced);
-            if(entity != NULL)
-            {
-               Handle<Object> obj = Object::New();
-               obj->Set(entityid, Uint32::New(entity->GetId()));
-               obj->Set(normal, WrapVec3(isect.getWorldIntersectNormal()));
-               obj->Set(position, WrapVec3(isect.getWorldIntersectPoint()));
-               ret->Set(count++, obj);
-            }
-         }
+         dtEntity::SystemInterface::Intersection isect = *i;
+         Handle<Object> obj = Object::New();
+         obj->Set(entityid, Uint32::New(isect.mEntityId));
+         obj->Set(normal, WrapVec3(isect.mNormal));
+         obj->Set(position, WrapVec3(isect.mPosition));
+         ret->Set(count++, obj); 
       }
 
       return scope.Close(ret);
    }
-
+ 
    ////////////////////////////////////////////////////////////////////////////////
    Handle<Value> SCRConvertWorldToScreenCoords(const Arguments& args)
    {
-      osgViewer::View* view = UnwrapScreenView(args.This());
-      osg::Camera* cam = view->getCamera();
-
-      osg::Vec4d screenXYZ(args[0]->NumberValue(), args[1]->NumberValue(), args[2]->NumberValue(), 1);
-      screenXYZ = cam->getViewMatrix().preMult(screenXYZ);
-      screenXYZ = cam->getProjectionMatrix().preMult(screenXYZ);
-      double w = screenXYZ[3];
-      osg::Vec3d ret(screenXYZ[0] / w, screenXYZ[1] / w, screenXYZ[2] / w);
-      return WrapVec3(ret);
+      dtEntity::Vec3d screenXYZ(args[0]->NumberValue(), args[1]->NumberValue(), args[2]->NumberValue());
+      dtEntity::Vec3d c = dtEntity::GetWindowInterface()->ConvertWorldToScreenCoords(0, screenXYZ);
+      return WrapVec3(c);
    }
 
    ////////////////////////////////////////////////////////////////////////////////
    Handle<Value> SCROpenWindow(const Arguments& args)
    {
      // std::string name = ToStdString(args[0]);
-      dtEntity::StringId layername = dtEntity::LayerAttachPointSystem::DefaultLayerId;
+      dtEntity::StringId layername;
       if(args.Length() > 1)
       {
          layername = dtEntity::SIDHash(ToStdString(args[1]));
+      }
+      else
+      {
+         layername = dtEntity::SID("default");
       }
 
       osg::DisplaySettings* ds = osg::DisplaySettings::instance().get();
@@ -347,12 +232,12 @@ namespace dtEntityWrappers
          if(traitsin->Has(String::New("vsync"))) traits->vsync = traitsin->Get(String::New("vsync"))->BooleanValue();
       }
 
-      dtEntity::EntityManager* entityManager = GetEntityManager(args.This()->CreationContext());
-      dtEntity::ApplicationSystem* appsys;
-      entityManager->GetEntitySystem(dtEntity::ApplicationSystem::TYPE, appsys);
-
+      
       unsigned int contextid;
-      bool success = appsys->GetWindowManager()->OpenWindow(ToStdString(args[0]), layername, *traits, contextid);
+      // TODO how to pass traits???
+      //dtEntityOSG::OSGWindowInterface* wface = static_cast<dtEntityOSG::OSGWindowInterface*>(dtEntity::GetWindowInterface());
+      //wface->SetTraits(traits);
+      bool success = dtEntity::GetWindowInterface()->OpenWindow(ToStdString(args[0]), layername, contextid);
       assert(success);
       return Uint32::New(contextid);
    }
@@ -360,10 +245,7 @@ namespace dtEntityWrappers
    ////////////////////////////////////////////////////////////////////////////////
    Handle<Value> SCRCloseWindow(const Arguments& args)
    {     
-      dtEntity::EntityManager* entityManager = GetEntityManager(args.This()->CreationContext());
-      dtEntity::ApplicationSystem* appsys;
-      entityManager->GetEntitySystem(dtEntity::ApplicationSystem::TYPE, appsys);
-      appsys->GetWindowManager()->CloseWindow(ToStdString(args[0]));
+      dtEntity::GetWindowInterface()->CloseWindow(ToStdString(args[0]));
       return Undefined();
    }
 
@@ -376,10 +258,8 @@ namespace dtEntityWrappers
       }
       unsigned int contextId = args[0]->Uint32Value();
       int x, y, w, h;
-      dtEntity::EntityManager* entityManager = GetEntityManager(args.This()->CreationContext());
-      dtEntity::ApplicationSystem* appsys;
-      entityManager->GetEntitySystem(dtEntity::ApplicationSystem::TYPE, appsys);
-      appsys->GetWindowManager()->GetWindowGeometry(contextId, x, y, w, h);
+      
+      dtEntity::GetWindowInterface()->GetWindowGeometry(contextId, x, y, w, h);
 
       HandleScope scope;
       Handle<Array> arr = Array::New();
@@ -405,16 +285,13 @@ namespace dtEntityWrappers
       int w = arr->Get(2)->Int32Value();
       int h = arr->Get(3)->Int32Value();
 
-      dtEntity::EntityManager* entityManager = GetEntityManager(args.This()->CreationContext());
-      dtEntity::ApplicationSystem* appsys;
-      entityManager->GetEntitySystem(dtEntity::ApplicationSystem::TYPE, appsys);
-      appsys->GetWindowManager()->SetWindowGeometry(contextId, x, y, w, h);
+      dtEntity::GetWindowInterface()->SetWindowGeometry(contextId, x, y, w, h);
 
       return Undefined();
    }
 
    ////////////////////////////////////////////////////////////////////////////////
-   v8::Handle<v8::Object> WrapScreen(ScriptSystem* ss, osgViewer::View* v, osgViewer::GraphicsWindow* w)
+   v8::Handle<v8::Object> WrapScreen(ScriptSystem* ss)
    {
       HandleScope handle_scope;
       Handle<Context> context = ss->GetGlobalContext();
@@ -422,7 +299,6 @@ namespace dtEntityWrappers
 
       Handle<FunctionTemplate> templt = FunctionTemplate::New();
       templt->SetClassName(String::New("Screen"));
-      templt->InstanceTemplate()->SetInternalFieldCount(2);
 
       Handle<ObjectTemplate> proto = templt->PrototypeTemplate();
 
@@ -437,8 +313,6 @@ namespace dtEntityWrappers
       proto->Set("setWindowGeometry", FunctionTemplate::New(SCRSetWindowGeometry));
 
       Local<Object> instance = templt->GetFunction()->NewInstance();
-      instance->SetInternalField(0, External::New(v));
-      instance->SetInternalField(1, External::New(w));
 
       instance->SetAccessor(String::New("lockCursor"), SCRGetLockCursor, SCRSetLockCursor);
       instance->SetAccessor(String::New("showCursor"), SCRGetShowCursor, SCRSetShowCursor);
@@ -449,22 +323,5 @@ namespace dtEntityWrappers
       return handle_scope.Close(instance);
    }
 
-   ////////////////////////////////////////////////////////////////////////////////
-   osgViewer::View* UnwrapScreenView(Handle<Value> val)
-   {
-      Handle<Object> obj = Handle<Object>::Cast(val);
-      osgViewer::View* v;
-      GetInternal(obj, 0, v);
-      return v;
-   }
-
-   ////////////////////////////////////////////////////////////////////////////////
-   osgViewer::GraphicsWindow* UnwrapScreenWindow(Handle<Value> val)
-   {
-      Handle<Object> obj = Handle<Object>::Cast(val);
-      osgViewer::GraphicsWindow* v;
-      GetInternal(obj, 1, v);
-      return v;
-   }
 
 }

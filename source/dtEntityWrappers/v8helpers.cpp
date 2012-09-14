@@ -21,10 +21,12 @@
 #include <dtEntityWrappers/v8helpers.h>
 
 #include <dtEntityWrappers/entitymanagerwrapper.h>
+
+#include <dtEntity/core.h>
 #include <dtEntity/log.h>
+#include <dtEntity/systeminterface.h>
 #include <sstream>
 #include <iostream>
-#include <osg/MatrixTransform>
 #include <osgDB/FileUtils>
 #include <fstream>
 #ifdef HAVE_MMAN_H
@@ -108,7 +110,7 @@ namespace dtEntityWrappers
       // load file contents to string variable
       std::ostringstream stream;
 
-      std::string path = osgDB::findDataFile(fileName);
+      std::string path = dtEntity::GetSystemInterface()->FindDataFile(fileName);
 
       std::ifstream inFile;
       inFile.open(path.c_str(), std::ios::in);
@@ -137,7 +139,7 @@ namespace dtEntityWrappers
    }
 
    ////////////////////////////////////////////////////////////////////////////////
-   v8::Handle<v8::Value> WrapVec2(const osg::Vec2d& v)
+   v8::Handle<v8::Value> WrapVec2(const dtEntity::Vec2d& v)
    {
       HandleScope scope;
       Handle<Array> arr = Array::New(2);
@@ -148,7 +150,7 @@ namespace dtEntityWrappers
    }
 
    ////////////////////////////////////////////////////////////////////////////////
-   v8::Handle<v8::Value> WrapVec3(const osg::Vec3d& v)
+   v8::Handle<v8::Value> WrapVec3(const dtEntity::Vec3d& v)
    {
       HandleScope scope;
       Handle<Array> arr = Array::New(3);
@@ -160,7 +162,7 @@ namespace dtEntityWrappers
    }
 
    ////////////////////////////////////////////////////////////////////////////////
-   v8::Handle<v8::Value> WrapVec4(const osg::Vec4d& v)
+   v8::Handle<v8::Value> WrapVec4(const dtEntity::Vec4d& v)
    {
       HandleScope scope;
       Handle<Array> arr = Array::New(4);
@@ -173,7 +175,7 @@ namespace dtEntityWrappers
    }
 
    ////////////////////////////////////////////////////////////////////////////////
-   v8::Handle<v8::Value> WrapQuat(const osg::Quat& v)
+   v8::Handle<v8::Value> WrapQuat(const dtEntity::Quat& v)
    {
       HandleScope scope;
       Handle<Array> arr = Array::New(4);
@@ -186,7 +188,7 @@ namespace dtEntityWrappers
    }
 
    ////////////////////////////////////////////////////////////////////////////////
-   v8::Handle<v8::Value> WrapMatrix(const osg::Matrix& v)
+   v8::Handle<v8::Value> WrapMatrix(const dtEntity::Matrix& v)
    {
       HandleScope scope;
       Handle<Array> arr = Array::New(4);
@@ -254,53 +256,53 @@ namespace dtEntityWrappers
    }
 
    ////////////////////////////////////////////////////////////////////////////////
-   osg::Vec2d UnwrapVec2(v8::Handle<v8::Value> v)
+   dtEntity::Vec2d UnwrapVec2(v8::Handle<v8::Value> v)
    {
       HandleScope scope;
       Handle<Array> arr = Handle<Array>::Cast(v);
-      return osg::Vec2d(arr->Get(0)->NumberValue(),
+      return dtEntity::Vec2d(arr->Get(0)->NumberValue(),
                        arr->Get(1)->NumberValue());
    }
 
    ////////////////////////////////////////////////////////////////////////////////
-   osg::Vec3d UnwrapVec3(v8::Handle<v8::Value> v)
+   dtEntity::Vec3d UnwrapVec3(v8::Handle<v8::Value> v)
    {
       HandleScope scope;
       Handle<Array> arr = Handle<Array>::Cast(v);
-      return osg::Vec3d(arr->Get(0)->NumberValue(),
+      return dtEntity::Vec3d(arr->Get(0)->NumberValue(),
                        arr->Get(1)->NumberValue(),
                        arr->Get(2)->NumberValue());
    }
 
    ////////////////////////////////////////////////////////////////////////////////
-   osg::Vec4d UnwrapVec4(v8::Handle<v8::Value> v)
+   dtEntity::Vec4d UnwrapVec4(v8::Handle<v8::Value> v)
    {
       HandleScope scope;
       Handle<Array> arr = Handle<Array>::Cast(v);
-      return osg::Vec4d(arr->Get(0)->NumberValue(),
+      return dtEntity::Vec4d(arr->Get(0)->NumberValue(),
                        arr->Get(1)->NumberValue(),
                        arr->Get(2)->NumberValue(),
                        arr->Get(3)->NumberValue());
    }
 
    ////////////////////////////////////////////////////////////////////////////////
-   osg::Quat UnwrapQuat(v8::Handle<v8::Value> v)
+   dtEntity::Quat UnwrapQuat(v8::Handle<v8::Value> v)
    {
       HandleScope scope;
       Handle<Array> arr = Handle<Array>::Cast(v);
-      return osg::Quat(arr->Get(0)->NumberValue(),
+      return dtEntity::Quat(arr->Get(0)->NumberValue(),
                        arr->Get(1)->NumberValue(),
                        arr->Get(2)->NumberValue(),
                        arr->Get(3)->NumberValue());
    }
 
    ////////////////////////////////////////////////////////////////////////////////
-   osg::Matrix UnwrapMatrix(v8::Handle<v8::Value> v)
+   dtEntity::Matrix UnwrapMatrix(v8::Handle<v8::Value> v)
    {
       HandleScope scope;
       Handle<Array> arr = Handle<Array>::Cast(v);
 
-      return osg::Matrix(arr->Get(0)->NumberValue(),
+      return dtEntity::Matrix(arr->Get(0)->NumberValue(),
                          arr->Get(1)->NumberValue(),
                          arr->Get(2)->NumberValue(),
                          arr->Get(3)->NumberValue(),

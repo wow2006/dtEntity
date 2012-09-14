@@ -21,19 +21,20 @@
 #include <dtEntityEditor/editorapplication.h>
 
 #include <assert.h>
-#include <dtEntity/applicationcomponent.h>
-#include <dtEntity/cameracomponent.h>
 #include <dtEntity/componentpluginmanager.h>
 #include <dtEntity/core.h>
-#include <dtEntity/osgsysteminterface.h>
 #include <dtEntity/entity.h>
 #include <dtEntity/entitymanager.h>
-#include <dtEntity/initosgviewer.h>
-#include <dtEntity/layerattachpointcomponent.h>
+#include <dtEntity/init.h>
 #include <dtEntity/mapcomponent.h>
+#include <dtEntityOSG/osginputinterface.h>
+#include <dtEntityOSG/osgdebugdrawinterface.h>
+#include <dtEntityOSG/osgsysteminterface.h>
 #include <dtEntity/resourcemanager.h>
 #include <dtEntity/systemmessages.h>
-#include <dtEntity/windowmanager.h>
+#include <dtEntityOSG/osgwindowinterface.h>
+#include <dtEntityOSG/componentfactories.h>
+#include <dtEntityOSG/initosgviewer.h>
 #include <dtEntityEditor/editormainwindow.h>
 #include <dtEntityQtWidgets/messages.h>
 #include <dtEntityQtWidgets/osggraphicswindowqt.h>
@@ -65,7 +66,10 @@ namespace dtEntityEditor
       , mTimeScale(1)
       , mFileSystemWatcher(new QFileSystemWatcher())
    {
-      dtEntity::SetSystemInterface(new dtEntity::OSGSystemInterface());
+      dtEntity::SetSystemInterface(new dtEntityOSG::OSGSystemInterface(mEntityManager->GetMessagePump()));
+      dtEntity::SetWindowInterface(new dtEntityOSG::OSGWindowInterface(*mEntityManager));
+      dtEntity::SetInputInterface(new dtEntityOSG::OSGInputInterface(mEntityManager->GetMessagePump()));
+
       dtEntity::LogManager::GetInstance().AddListener(new dtEntity::ConsoleLogHandler());
       
       dtEntity::SetupDataPaths(argc,argv, false);
@@ -113,6 +117,7 @@ namespace dtEntityEditor
       emit DataPathsChanged(newpathsqt);
 
       dtEntity::AddDefaultEntitySystemsAndFactories(argc, argv, *mEntityManager);
+      dtEntityOSG::RegisterStandardFactories(dtEntity::ComponentPluginManager::GetInstance());
 
       // default plugin dir
       mPluginPaths.push_back("plugins");
@@ -169,18 +174,18 @@ namespace dtEntityEditor
       assert(mMainWindow != NULL);
 
       // give application system access to viewer
-      dtEntity::OSGSystemInterface* iface = static_cast<dtEntity::OSGSystemInterface*>(dtEntity::GetSystemInterface());
+      dtEntityOSG::OSGSystemInterface* iface = static_cast<dtEntityOSG::OSGSystemInterface*>(dtEntity::GetSystemInterface());
       iface->SetViewer(mViewer);
 
 
-      bool success = dtEntity::DoScreenSetup(0, NULL, *mViewer, GetEntityManager());
+      bool success = dtEntityOSG::DoScreenSetup(0, NULL, *mViewer, GetEntityManager());
       if(!success)
       {
          LOG_ERROR("Error setting up screens! exiting");
          return;
       }
 
-      dtEntity::SetupSceneGraph(*mViewer, GetEntityManager(), new osg::Group());
+      dtEntityOSG::SetupSceneGraph(*mViewer, GetEntityManager(), new osg::Group());
     
       osgViewer::ViewerBase::Views views;
       mViewer->getViews(views);
@@ -191,6 +196,9 @@ namespace dtEntityEditor
          stats->setKeyEventPrintsOutStats(osgGA::GUIEventAdapter::KEY_Undo);
          (*i)->addEventHandler(stats);
       }
+
+      dtEntity::SetDebugDrawInterface(new dtEntityOSG::OSGDebugDrawInterface(*mEntityManager));
+
       
       ////////////////////
       
@@ -300,8 +308,7 @@ namespace dtEntityEditor
    ////////////////////////////////////////////////////////////////////////////////
    void EditorApplication::StepGame()
    {
-      dtEntity::ApplicationSystem* appsys;
-      GetEntityManager().GetES(appsys);
+      dtEntity::SystemInterface* iface = dtEntity::GetSystemInterface();
 
       while(!mViewer->done())
       {
@@ -309,12 +316,9 @@ namespace dtEntityEditor
          //LOG_ALWAYS("STEP!" << appsys->GetSimulationTime());
          mViewer->advance(DBL_MAX);
 
-         // check if a window should be closed
-         appsys->GetWindowManager()->ProcessQueuedMessages();
-
          mViewer->eventTraversal();
 
-         appsys->EmitTickMessagesAndQueuedMessages();
+         iface->EmitTickMessagesAndQueuedMessages();
 
          mViewer->updateTraversal();
          mViewer->renderingTraversals();
@@ -376,48 +380,6 @@ namespace dtEntityEditor
    }
 
    ////////////////////////////////////////////////////////////////////////////////
-   void EditorApplication::CreateCameraEntityIfNotExists()
-   {
-      dtEntity::CameraSystem* camsys;
-      GetEntityManager().GetEntitySystem(dtEntity::CameraComponent::TYPE, camsys);
-      if(camsys->GetNumComponents() == 0)
-      {
-         std::string cameramapname = "maps/default.dtemap";
-
-         dtEntity::MapSystem* mapSystem;
-         GetEntityManager().GetEntitySystem(dtEntity::MapComponent::TYPE, mapSystem);
-
-         if(!mapSystem->GetLoadedMaps().empty())
-         {
-            cameramapname = mapSystem->GetLoadedMaps().front();
-         }
-
-         // create a main camera entity if it was not loaded from map
-
-         dtEntity::Entity* entity;
-         mEntityManager->CreateEntity(entity);
-         dtEntity::OSGSystemInterface* iface = static_cast<dtEntity::OSGSystemInterface*>(dtEntity::GetSystemInterface());
-         unsigned int contextId = iface->GetPrimaryWindow()->getState()->getContextID();
-         dtEntity::CameraComponent* camcomp;
-         entity->CreateComponent(camcomp);
-         camcomp->SetContextId(contextId);
-         camcomp->SetClearColor(osg::Vec4(0,0,0,1));
-         camcomp->Finished();
-
-         dtEntity::MapComponent* mapcomp;
-         entity->CreateComponent(mapcomp);
-         std::ostringstream os;
-         os << "cam_" << contextId;
-         mapcomp->SetEntityName(os.str());
-         mapcomp->SetUniqueId(os.str());
-         mapcomp->SetMapName(cameramapname);
-         mapcomp->Finished();
-         GetEntityManager().AddToScene(entity->GetId());
-      }
-   }
-
-
-   ////////////////////////////////////////////////////////////////////////////////
    void EditorApplication::NewScene()
    {
       dtEntity::MapSystem* mapSystem;
@@ -435,8 +397,6 @@ namespace dtEntityEditor
       mapSystem->UnloadScene();
 
       mapSystem->LoadScene(path.toStdString());
-
-      //CreateCameraEntityIfNotExists();
       
       emit SceneLoaded(path);
 

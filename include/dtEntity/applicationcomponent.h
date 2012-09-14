@@ -28,33 +28,11 @@
 #include <dtEntity/scriptaccessor.h>
 #include <dtEntity/stringid.h>
 #include <dtEntity/systeminterface.h>
-#include <osg/Timer>
-
-namespace osgViewer
-{
-   class View;
-   class Window;
-   class ViewerBase;
-   class GraphicsWindow;
-}
-
-namespace osg
-{
-   class Camera;
-   class Group;
-   class Node;
-}
 
 namespace dtEntity
 { 
 
-   ////////////////////////////////////////////////////////////////////////////////
-   class ApplicationImpl;  
-   class DtEntityUpdateCallback;
-   class WindowManager;
-
-
-	/**
+   /**
     * An entity system for holding the dtEntity application
     * and providing some time management methods
 	 */
@@ -62,8 +40,6 @@ namespace dtEntity
       : public EntitySystem
       , public ScriptAccessor
    {
-
-      friend class DtEntityUpdateCallback;
 
    public:
       static const ComponentType TYPE;
@@ -74,9 +50,6 @@ namespace dtEntity
       ~ApplicationSystem();
 
       ComponentType GetComponentType() const { return TYPE; }
-
-      void EmitTickMessagesAndQueuedMessages();
-
 
       /// Returns the UniqueID of this ApplicationSystem
       std::string GetUniqueID() { return mApplicationSystemInfo.mUniqueID; }
@@ -116,12 +89,6 @@ namespace dtEntity
 	  
 	  /** Functor reacting to SetSystemPropertiesMessageandling is not perfect; the  */
       void OnSetSystemProperties(const Message& msg);
-
-      /** adds input callback to cameras */
-      void OnCameraAdded(const Message& msg);      
-
-      void SetWindowManager(WindowManager* wm);
-      WindowManager* GetWindowManager() const;
 
       void AddCmdLineArg(const std::string& arg)
       {
@@ -179,7 +146,6 @@ namespace dtEntity
       MessageFunctor mSetComponentPropertiesFunctor;
       MessageFunctor mSetSystemPropertiesFunctor;
       MessageFunctor mResetSystemFunctor;
-      MessageFunctor mCameraAddedFunctor;
       
    };
 }

@@ -20,7 +20,7 @@
 * Martin Scheffler
 */
 
-#include <dtEntity/cameracomponent.h>
+#include <dtEntityOSG/cameracomponent.h>
 #include <dtEntity/component.h>
 #include <dtEntity/defaultentitysystem.h>
 #include <dtEntity/message.h>
@@ -66,7 +66,7 @@ namespace dtEntitySimulation
 
       virtual void OnAddedToEntity(dtEntity::Entity& e);
       virtual void Finished();
-      dtEntity::TransformComponent* GetTransformComponent() const { return mTransformComponent; }
+      dtEntityOSG::TransformComponent* GetTransformComponent() const { return mTransformComponent; }
 
       void SetClampingMode(dtEntity::StringId mode) { mClampingMode.Set(mode); }
       dtEntity::StringId GetClampingMode() const { return mClampingMode.Get(); }
@@ -106,7 +106,7 @@ namespace dtEntitySimulation
       dtEntity::FloatProperty mMinDistToCamera;
       dtEntity::FloatProperty mMinMovementDelta;
 
-      dtEntity::TransformComponent* mTransformComponent;
+      dtEntityOSG::TransformComponent* mTransformComponent;
       unsigned int mIntersectIndex;
       dtEntity::Entity* mEntity;
       osg::ref_ptr<osgUtil::LineSegmentIntersector> mIntersector;
@@ -159,7 +159,7 @@ namespace dtEntitySimulation
 
       dtEntity::Property* ScriptGetTerrainHeight(const dtEntity::PropertyArgs& args);
 
-      dtEntity::TransformComponent* GetTransformComp(dtEntity::EntityId eid, GroundClampingComponent* component);
+      dtEntityOSG::TransformComponent* GetTransformComp(dtEntity::EntityId eid, GroundClampingComponent* component);
       void DirtyAll();
       void HandleIntersection(GroundClampingComponent* component,
          const osgUtil::LineSegmentIntersector::Intersection& intersection, float dt, double simTime);
@@ -179,7 +179,7 @@ namespace dtEntitySimulation
       dtEntity::BoolProperty mFetchLODs;
 
       osgSim::LineOfSight mLos;
-      dtEntity::CameraComponent* mCamera;
+      dtEntityOSG::CameraComponent* mCamera;
 
    };
 }

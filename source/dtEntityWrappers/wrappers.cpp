@@ -20,7 +20,6 @@
 
 #include <dtEntityWrappers/wrappers.h>
 
-#include <dtEntity/applicationcomponent.h>
 #include <dtEntity/mapcomponent.h>
 #include <dtEntity/entitymanager.h>
 #include <dtEntity/nodemasks.h>
@@ -37,9 +36,6 @@
 #include <dtEntity/dtentity_config.h>
 #include <v8.h>
 
-#if BUILD_CAL3D
-  #include <dtEntityWrappers/animationsystemwrapper.h>
-#endif
 
 #if BUILD_OPENAL
   #include <dtEntityWrappers/soundsystemwrapper.h>
@@ -74,13 +70,6 @@ namespace dtEntityWrappers
    void InitializeAllWrappers(dtEntity::EntityManager& em)
    {
       
-      dtEntity::ApplicationSystem* as;
-      if(!em.GetEntitySystem(dtEntity::ApplicationSystem::TYPE, as))
-      {
-        LOG_ERROR("Could not get application system!");
-        return;
-      }
-
       dtEntity::MapSystem* mapsystem;
       if(!em.GetEntitySystem(dtEntity::MapComponent::TYPE, mapsystem))
       {
@@ -99,14 +88,6 @@ namespace dtEntityWrappers
       Handle<Context> context = scriptsystem->GetGlobalContext();      
       Context::Scope context_scope(context);
       
-/*#if BUILD_CEGUI
-      
-      as->GetViewer()->setThreadingModel(osgViewer::ViewerBase::SingleThreaded);
-      // make main view gl context current before creating gui
-      dtEntity::GUI* gui = new dtEntity::GUI(em, as->GetPrimaryCamera());
-      context->Global()->Set(String::New("GUI"), WrapGui(scriptsystem, gui));
-#endif*/
-
       context->Global()->Set(String::New("DebugDrawManager"), CreateDebugDrawManager(context));
       //context->Global()->Set(String::New("Layer"), FunctionTemplate::New(CreateNewLayer)->GetFunction());
 
@@ -125,9 +106,6 @@ namespace dtEntityWrappers
       InitSoundSystemWrapper(scriptsystem);
 #endif
 
-#if BUILD_CAL3D
-      InitAnimationSystemWrapper(scriptsystem);
-#endif
    }
 
 }

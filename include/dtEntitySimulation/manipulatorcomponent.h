@@ -23,17 +23,17 @@
 #include <dtEntity/component.h>
 #include <dtEntity/defaultentitysystem.h>
 #include <dtEntity/dynamicproperty.h>
-#include <dtEntity/nodecomponent.h>
+#include <dtEntityOSG/nodecomponent.h>
 #include <osgManipulator/Dragger>
 
 namespace dtEntitySimulation
 {
 
    class ManipulatorComponent
-         : public dtEntity::NodeComponent
+         : public dtEntityOSG::NodeComponent
    {
 
-      typedef dtEntity::NodeComponent BaseClass;
+      typedef dtEntityOSG::NodeComponent BaseClass;
 
 
    public:
@@ -85,7 +85,7 @@ namespace dtEntitySimulation
       osg::Vec3d GetOffsetFromStart() const { return mOffsetFromStartVal; }
 
       void SetUseLocalCoords(bool v);
-      bool GetUseLocalCoords() const { return mUseLocalCoords.Get(); }
+      bool GetUseLocalCoords() const { return mUseLocalCoordsVal; }
 
       void SetKeepSizeConstant(bool v);
       bool GetKeepSizeConstant() const { return mKeepSizeConstantVal; }

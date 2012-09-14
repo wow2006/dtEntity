@@ -1,10 +1,12 @@
 #include "testcomponent.h"
 
+#include <dtEntity/core.h>
+#include <dtEntity/debugdrawinterface.h>
 #include <dtEntity/entity.h>
-#include <dtEntity/layercomponent.h>
+#include <dtEntityOSG/layercomponent.h>
 #include <dtEntity/stringid.h>
 #include <dtEntity/systemmessages.h>
-#include <dtEntity/positionattitudetransformcomponent.h>
+#include <dtEntityOSG/positionattitudetransformcomponent.h>
 #include <sstream>
 
 
@@ -90,7 +92,6 @@ void TestComponent::OnRemovedFromEntity(dtEntity::Entity& entity)
 */
 TestSystem::TestSystem(dtEntity::EntityManager& em)
    : BaseClass(em)
-   , mDebugDrawManager(dtEntity::DebugDrawManager(em))
 {
    /*
      Register the method TestEntitySystem::Tick to be called
@@ -104,7 +105,7 @@ TestSystem::TestSystem(dtEntity::EntityManager& em)
    /*
      The debug draw manager is not automatically enabled, so do this here
   */
-   mDebugDrawManager.SetEnabled(true);
+   dtEntity::GetDebugDrawInterface()->SetEnabled(true);
 }
 
 ////////////////////////////////////////////////////////////////////////////
@@ -143,7 +144,7 @@ void TestSystem::Tick(const dtEntity::Message& msg)
         Get access to a component of type PositionAttitudeTransform on the same entity.
         If it does not exist then ignore component
       */
-      dtEntity::PositionAttitudeTransformComponent* pcomp;
+      dtEntityOSG::PositionAttitudeTransformComponent* pcomp;
       if(GetEntityManager().GetComponent(id, pcomp))
       {
          // Get position property from transform component
@@ -160,7 +161,7 @@ void TestSystem::Tick(const dtEntity::Message& msg)
          // A duration value of 0 means the text is only rendered once.
          // Because the AddString method is called each frame this is
          // perfect.
-         mDebugDrawManager.AddString(position, label, color, 0, true);
+         dtEntity::GetDebugDrawInterface()->AddString(position, label, color, 0, true);
       }
    }
 }

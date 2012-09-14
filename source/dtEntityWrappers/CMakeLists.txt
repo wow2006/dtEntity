@@ -22,7 +22,7 @@ SET(LIB_PUBLIC_HEADERS
 	${HEADER_PATH}/file.h
 	${HEADER_PATH}/globalfunctions.h
 	${HEADER_PATH}/inputhandlerwrapper.h
-  ${HEADER_PATH}/jsproperty.h
+    ${HEADER_PATH}/jsproperty.h
 	${HEADER_PATH}/loggerwrapper.h
 	${HEADER_PATH}/mapsystemwrapper.h
 	${HEADER_PATH}/messages.h
@@ -61,17 +61,8 @@ SET(LIB_SOURCES_REPLACE
 
 SET(WRAPLIBRARIES dtEntity
                   ${V8_LIBRARIES}
-                  ${OPENSCENEGRAPH_LIBRARIES}
-                  ${OPENTHREADS_LIBRARIES}
 )
 
-
-IF(BUILD_CAL3D)
-	LIST(APPEND LIB_PUBLIC_HEADERS ${HEADER_PATH}/animationsystemwrapper.h)
-	LIST(APPEND LIB_SOURCES		   animationsystemwrapper.cpp)
-	LIST(APPEND WRAPLIBRARIES      ${DTANIM_LIBRARIES}
-	)
-ENDIF(BUILD_CAL3D)
 
 IF(BUILD_OPENAL)
     LIST(APPEND LIB_PUBLIC_HEADERS ${HEADER_PATH}/soundsystemwrapper.h)

@@ -46,7 +46,6 @@ configure_file (
 
 SET(LIB_PUBLIC_HEADERS
   ${HEADER_PATH}/applicationcomponent.h
-  ${HEADER_PATH}/cameracomponent.h
   ${HEADER_PATH}/commandmessages.h
   ${HEADER_PATH}/component.h
   ${HEADER_PATH}/componentfactories.h
@@ -54,7 +53,7 @@ SET(LIB_PUBLIC_HEADERS
   ${HEADER_PATH}/componentpluginmanager.h
   ${HEADER_PATH}/core.h
   ${HEADER_PATH}/hash.h
-  ${HEADER_PATH}/debugdrawmanager.h
+  ${HEADER_PATH}/debugdrawinterface.h
   ${HEADER_PATH}/defaultentitysystem.h
   ${HEADER_PATH}/dynamicscomponent.h
   ${HEADER_PATH}/dynamicproperty.h
@@ -64,29 +63,18 @@ SET(LIB_PUBLIC_HEADERS
   ${HEADER_PATH}/entitysystem.h
   ${HEADER_PATH}/export.h
   ${HEADER_PATH}/FastDelegate.h
-  ${HEADER_PATH}/FastDelegateBind.h
-  ${HEADER_PATH}/groupcomponent.h
-  ${HEADER_PATH}/initosgviewer.h
-  ${HEADER_PATH}/inputhandler.h
-  ${HEADER_PATH}/layerattachpointcomponent.h
-  ${HEADER_PATH}/layercomponent.h
-  ${HEADER_PATH}/lightcomponent.h
+  ${HEADER_PATH}/FastDelegateBind.h  
+  ${HEADER_PATH}/init.h
+  ${HEADER_PATH}/inputinterface.h
   ${HEADER_PATH}/log.h
   ${HEADER_PATH}/logmanager.h
   ${HEADER_PATH}/mapcomponent.h
   ${HEADER_PATH}/mapencoder.h
-  ${HEADER_PATH}/matrixtransformcomponent.h
   ${HEADER_PATH}/message.h
   ${HEADER_PATH}/messagefactory.h
   ${HEADER_PATH}/messagepump.h
-  ${HEADER_PATH}/nodecomponent.h
   ${HEADER_PATH}/nodemasks.h
-  ${HEADER_PATH}/nodemaskvisitor.h
   ${HEADER_PATH}/objectfactory.h
-  ${HEADER_PATH}/osganimationcomponent.h
-  ${HEADER_PATH}/osgsysteminterface.h
-  ${HEADER_PATH}/positionattitudetransformcomponent.h
-  ${HEADER_PATH}/pickshapecomponent.h
   ${HEADER_PATH}/profile.h
   ${HEADER_PATH}/property.h
   ${HEADER_PATH}/propertycontainer.h
@@ -95,60 +83,35 @@ SET(LIB_PUBLIC_HEADERS
   ${HEADER_PATH}/scriptaccessor.h
   ${HEADER_PATH}/singleton.h
   ${HEADER_PATH}/spawner.h
-  ${HEADER_PATH}/shadercomponent.h
-  ${HEADER_PATH}/shadowcomponent.h
-  ${HEADER_PATH}/skyboxcomponent.h
-  ${HEADER_PATH}/staticmeshcomponent.h
   ${HEADER_PATH}/stringid.h
   ${HEADER_PATH}/systeminterface.h
   ${HEADER_PATH}/systemmessages.h
-  ${HEADER_PATH}/textlabelcomponent.h
-  ${HEADER_PATH}/texturelabelcomponent.h
   ${HEADER_PATH}/threadsafequeue.h
-  ${HEADER_PATH}/transformcomponent.h
   ${HEADER_PATH}/uniqueid.h
-  ${HEADER_PATH}/windowmanager.h
+  ${HEADER_PATH}/windowinterface.h
   ${DTENTITY_CONFIG_HEADER}
 
 )
 
+
 SET(LIB_REPLACE
   applicationcomponent.cpp
-  cameracomponent.cpp
   commandmessages.cpp
   core.cpp
   dynamicscomponent.cpp
-  groupcomponent.cpp
-  inputhandler.cpp
-  layerattachpointcomponent.cpp
-  layercomponent.cpp
-  lightcomponent.cpp
+  inputinterface.cpp
   mapcomponent.cpp
-  matrixtransformcomponent.cpp
-  nodecomponent.cpp
-  osganimationcomponent.cpp
-  osgsysteminterface.cpp
-  pickshapecomponent.cpp
-  positionattitudetransformcomponent.cpp
-  shadercomponent.cpp
-  shadowcomponent.cpp
-  staticmeshcomponent.cpp
-  skyboxcomponent.cpp
   systemmessages.cpp
-  textlabelcomponent.cpp
-  texturelabelcomponent.cpp
-  transformcomponent.cpp
 )
 
 SET(LIB_SOURCES
   componentfactories.cpp
-  componentpluginmanager.cpp
-  debugdrawmanager.cpp
-  dynamicscomponent.cpp
+  componentpluginmanager.cpp  
   entity.cpp
   entitymanager.cpp
   hash.cpp
-  initosgviewer.cpp
+  init.cpp
+  inputinterface.cpp
   logmanager.cpp
   messagefactory.cpp
   messagepump.cpp
@@ -161,8 +124,6 @@ SET(LIB_SOURCES
   spawner.cpp
   stringid.cpp
   uniqueid.cpp
-  windowmanager.cpp
-
 )
 
 SET(DTENTITYLIBS      ${OPENSCENEGRAPH_LIBRARIES}

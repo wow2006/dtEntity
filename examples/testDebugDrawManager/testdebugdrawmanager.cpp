@@ -21,22 +21,18 @@
 *
 * Martin Scheffler
 */
-#include <dtEntity/applicationcomponent.h>
 #include <dtEntity/component.h>
 #include <dtEntity/core.h>
-#include <dtEntity/osgsysteminterface.h>
+#include <dtEntity/debugdrawinterface.h>
 #include <dtEntity/defaultentitysystem.h>
 #include <dtEntity/entity.h>
 #include <dtEntity/entitymanager.h>
-#include <dtEntity/initosgviewer.h>
-#include <dtEntity/layercomponent.h>
+#include <dtEntityOSG/initosgviewer.h>
+#include <dtEntityOSG/layercomponent.h>
 #include <dtEntity/mapcomponent.h>
 #include <dtEntity/spawner.h>
 #include <dtEntity/stringid.h>
-#include <dtEntity/windowmanager.h>
-#include <dtEntityPhysX/pagedterraincullvisitor.h>
-#include <dtEntityPhysX/physxcomponent.h>
-#include <dtEntityPhysX/physxpagedterraincomponent.h>
+#include <dtEntity/systeminterface.h>
 #include <osgViewer/Renderer>
 #include <osgViewer/CompositeViewer>
 #include <osgViewer/ViewerEventHandlers>
@@ -56,26 +52,24 @@ int main(int argc, char** argv)
    osgViewer::Viewer viewer(arguments);
    dtEntity::EntityManager em;
    
-   dtEntity::InitOSGViewer(argc, argv, viewer, em, false);   
-   
-   dtEntity::ApplicationSystem* appsystem;
-   em.GetEntitySystem(dtEntity::ApplicationSystem::TYPE, appsystem);
+   dtEntityOSG::InitOSGViewer(argc, argv, viewer, em, false);
 
-   dtEntity::DebugDrawManager debugDrawManager(em);
-   debugDrawManager.SetEnabled(true);
+   dtEntity::DebugDrawInterface* debugdraw = dtEntity::GetDebugDrawInterface();
 
-   debugDrawManager.AddLine(osg::Vec3(0, 0, 0), osg::Vec3(0, 0, 1), osg::Vec4(1,0,0,1), 1, 100, true);
-   debugDrawManager.AddLine(osg::Vec3(0, 0, 0), osg::Vec3(1, 0, 0), osg::Vec4(0,1,0,1), 1, 100, true);
-   debugDrawManager.AddSphere(osg::Vec3(-1, 0, 0), 0.5f, osg::Vec4(1,1,1,1), 100, true);
+   debugdraw->SetEnabled(true);
+
+   debugdraw->AddLine(osg::Vec3(0, 0, 0), osg::Vec3(0, 0, 1), osg::Vec4(1,0,0,1), 1, 100, true);
+   debugdraw->AddLine(osg::Vec3(0, 0, 0), osg::Vec3(1, 0, 0), osg::Vec4(0,1,0,1), 1, 100, true);
+   debugdraw->AddSphere(osg::Vec3(-1, 0, 0), 0.5f, osg::Vec4(1,1,1,1), 100, true);
 
    std::vector<osg::Vec3> points;
    for(float f = 0; f < osg::PI * 2; f += 0.1f)
    {
       points.push_back(osg::Vec3(-sin(f) * 2, 0, cos(f) * 2));
-      debugDrawManager.AddPoint(osg::Vec3(-sin(f) * 1.5f, 0, cos(f) * 1.5f), osg::Vec4(1,1,0,1), 1, f * 10, true);
+      debugdraw->AddPoint(osg::Vec3(-sin(f) * 1.5f, 0, cos(f) * 1.5f), osg::Vec4(1,1,0,1), 1, f * 10, true);
    }
 
-   debugDrawManager.AddPoints(points, osg::Vec4(0,1,1,1), 1, 100, true);
+   debugdraw->AddPoints(points, osg::Vec4(0,1,1,1), 1, 100, true);
 
    std::vector<osg::Vec3> tris;
    osg::Vec3 o(2, 0, 0);
@@ -87,39 +81,40 @@ int main(int argc, char** argv)
    tris.push_back(o + osg::Vec3(-1, 0, -1));
    tris.push_back(o + osg::Vec3(0, 0, -1));
 
-   debugDrawManager.AddTriangles(tris, osg::Vec4(0,1,1,1), 1, 100, true);
+   debugdraw->AddTriangles(tris, osg::Vec4(0,1,1,1), 1, 100, true);
 
    //mDebugDrawManager->AddAABB(osg::Vec3(-2,-2,-2), osg::Vec3(2,2,2), osg::Vec4(0.5f,1,0.5f, 1), 1, 50);
 
    osg::Matrix m;
    m.makeRotate(osg::Vec3(1,0,0), osg::Vec3(1,1,0));
-   debugDrawManager.AddOBB(m, osg::Vec3(-2,-2,-2), osg::Vec3(2,2,2), osg::Vec4(0.5f,1,0.5f, 1), 1, 50);
-   debugDrawManager.AddAxes(m, osg::Vec4(1,0,0.5f, 1), 1, 50);
+   debugdraw->AddOBB(m, osg::Vec3(-2,-2,-2), osg::Vec3(2,2,2), osg::Vec4(0.5f,1,0.5f, 1), 1, 50);
+   debugdraw->AddAxes(m, osg::Vec4(1,0,0.5f, 1), 1, 50);
 
-   dtEntity::OSGSystemInterface* iface = static_cast<dtEntity::OSGSystemInterface*>(dtEntity::GetSystemInterface());
 
-   iface->GetPrimaryView()->setCameraManipulator(new osgGA::TrackballManipulator());
-   iface->GetPrimaryView()->getCameraManipulator()->setHomePosition(osg::Vec3(0, -10, 0), osg::Vec3(0, 1, 0), osg::Vec3(0,0,1),false);
-   iface->GetPrimaryView()->getCameraManipulator()->home(0);
+   viewer.setCameraManipulator(new osgGA::TrackballManipulator());
+   viewer.getCameraManipulator()->setHomePosition(osg::Vec3(0, -10, 0), osg::Vec3(0, 1, 0), osg::Vec3(0,0,1),false);
+   viewer.getCameraManipulator()->home(0);
 
    float time = 0;
+
+   dtEntity::SystemInterface* iface = dtEntity::GetSystemInterface();
 
    while (!viewer.done())
    {
       viewer.advance(DBL_MAX);
       viewer.eventTraversal();
 
-      appsystem->EmitTickMessagesAndQueuedMessages();
+      iface->EmitTickMessagesAndQueuedMessages();
 
       viewer.updateTraversal();
       
       
       time += 0.1f;
-      debugDrawManager.AddLine(osg::Vec3(0, 0, 0), osg::Vec3(-sin(time), 0, cos(time)), osg::Vec4(0,1,1,1), 1, 0, true);
+      debugdraw->AddLine(osg::Vec3(0, 0, 0), osg::Vec3(-sin(time), 0, cos(time)), osg::Vec4(0,1,1,1), 1, 0, true);
 
-      debugDrawManager.AddCircle(osg::Vec3(1, 0, 0), osg::Vec3(-sin(time), 0, cos(time)), 0.5f, osg::Vec4(0,1,1,1), 0, true);
+      debugdraw->AddCircle(osg::Vec3(1, 0, 0), osg::Vec3(-sin(time), 0, cos(time)), 0.5f, osg::Vec4(0,1,1,1), 0, true);
 
-      debugDrawManager.AddString(osg::Vec3(-sin(time), 0, cos(time)), "My TestString", osg::Vec4(1,1,0,1), 0, true);
+      debugdraw->AddString(osg::Vec3(-sin(time), 0, cos(time)), "My TestString", osg::Vec4(1,1,0,1), 0, true);
 
       viewer.renderingTraversals();
    }

@@ -26,9 +26,8 @@
 
 #include <dtEntity/entity.h>
 #include <dtEntity/core.h>
-#include <dtEntity/osgsysteminterface.h>
-#include <dtEntity/layerattachpointcomponent.h>
-#include <dtEntity/windowmanager.h>
+#include <dtEntityOSG/osgsysteminterface.h>
+#include <dtEntityOSG/layerattachpointcomponent.h>
 #include <iostream>
 #include <osgLibRocket/GuiNode>
 #include <osgViewer/CompositeViewer>
@@ -210,7 +209,7 @@ namespace dtEntityRocket
      osgLibRocket::GuiNode* gui = dynamic_cast<osgLibRocket::GuiNode*>(GetNode());
      if(gui)
      {
-       dtEntity::OSGSystemInterface* iface = static_cast<dtEntity::OSGSystemInterface*>(dtEntity::GetSystemInterface());
+       dtEntityOSG::OSGSystemInterface* iface = static_cast<dtEntityOSG::OSGSystemInterface*>(dtEntity::GetSystemInterface());
        iface->GetPrimaryView()->removeEventHandler(gui->GetGUIEventHandler());
      }
    }
@@ -236,7 +235,7 @@ namespace dtEntityRocket
      osgLibRocket::GuiNode* gui = new osgLibRocket::GuiNode(mContextName.Get(), mDebug.Get());
      SetNode(gui);
 
-     dtEntity::OSGSystemInterface* iface = static_cast<dtEntity::OSGSystemInterface*>(dtEntity::GetSystemInterface());
+     dtEntityOSG::OSGSystemInterface* iface = static_cast<dtEntityOSG::OSGSystemInterface*>(dtEntity::GetSystemInterface());
      iface->GetPrimaryView()->getEventHandlers().push_front(gui->GetGUIEventHandler());
 
      if(mFullScreen.Get())
@@ -265,9 +264,9 @@ namespace dtEntityRocket
 
        
        //appsys->GetPrimaryView()->addSlave(cam, false);
-       dtEntity::LayerAttachPointSystem* layersys;
-       mEntity->GetEntityManager().GetEntitySystem(dtEntity::LayerAttachPointComponent::TYPE, layersys);
-       //dtEntity::LayerAttachPointComponent* sceneLayer = layersys->GetDefaultLayer();
+       dtEntityOSG::LayerAttachPointSystem* layersys;
+       mEntity->GetEntityManager().GetEntitySystem(dtEntityOSG::LayerAttachPointComponent::TYPE, layersys);
+       //dtEntityOSG::LayerAttachPointComponent* sceneLayer = layersys->GetDefaultLayer();
 
        // add as first child of scene graph root. This is to make sure
        // that the rocket node is the first to handle event callback.

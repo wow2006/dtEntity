@@ -52,7 +52,11 @@ namespace osgLibRocket
 
       virtual void ProcessEvent(Rocket::Core::Event& ev)
       {
-         _keys_handled = _mouse_handled = (ev.GetTargetElement() != _rootElement);
+         _keys_handled = _mouse_handled = true;
+         if(ev.GetTargetElement() == _rootElement)
+         {
+            _keys_handled = _mouse_handled = false;
+         }
          if(ev.GetTargetElement()->HasAttribute("passkeyevents"))
          {
             _keys_handled = false;
@@ -61,7 +65,7 @@ namespace osgLibRocket
          {
             _mouse_handled = false;
          }
-
+      
       }
    };
 
@@ -551,11 +555,15 @@ namespace osgLibRocket
     {
       case(osgGA::GUIEventAdapter::KEYDOWN):
       {
-        Rocket::Core::Input::KeyIdentifier key = GetKeyCode(ea.getKey());
-        int modifiers = GetKeyModifiers(ea.getModKeyMask());
-        _context->ProcessTextInput((char)ea.getKey());
-        _context->ProcessKeyDown(key, modifiers);
-        return (_camera != NULL && _contextEventListener->_keys_handled);
+         Rocket::Core::Input::KeyIdentifier key = GetKeyCode(ea.getKey());
+         int modifiers = GetKeyModifiers(ea.getModKeyMask());
+         
+         if(ea.getKey() != osgGA::GUIEventAdapter::KEY_BackSpace)
+         {
+            _context->ProcessTextInput((char)ea.getKey());
+         }
+         _context->ProcessKeyDown(key, modifiers);
+         return (_camera != NULL && _contextEventListener->_keys_handled);
 
       }
       case(osgGA::GUIEventAdapter::KEYUP):

@@ -40,7 +40,7 @@ INCLUDE_DIRECTORIES(
 
 QT4_WRAP_CPP(MOC_SOURCES ${MOC_INPUT})
 
-ADD_EXECUTABLE(${APP_NAME}
+ADD_EXECUTABLE(${APP_NAME} 
     ${APP_PUBLIC_HEADERS}
     ${APP_SOURCES}
     ${MOC_SOURCES}
@@ -59,6 +59,7 @@ TARGET_LINK_LIBRARIES(${APP_NAME}
                            ${ADDITIONAL_LIBS}
                            ${OPENTHREADS_LIBRARIES}
                            dtEntity
+                           dtEntityOSG
                            dtEntityQtWidgets
                            ${DTENTITY_PLUGINS}
 )

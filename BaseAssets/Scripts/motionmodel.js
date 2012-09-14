@@ -13,17 +13,17 @@ function MotionComponent(eid) {
 
    // public members
    this.componentType = "CameraMotion";
-   this.Enabled = true;
-   this.MouseEnabled = true;
+   createBoolProp(this, "Enabled", true);
+   createBoolProp(this, "MouseEnabled", true);
 
-   this.KeepUpright = false;
-   this.ShowSelection = true;
-   this.MoveParallelToGround = false;
+  createBoolProp(this, "KeepUpright", false);
+  createBoolProp(this, "ShowSelection", true);
+
+   createBoolProp(this, "MoveParallelToGround", false);
 
    // private members
 
    var targetCamComp = null;
-   var currentlyEnabled = false;
    var self = this; // not all callbacks receive a correct 'this'
 
    this.getCameraPosition = function() { return targetCamComp.Position; }
@@ -34,21 +34,6 @@ function MotionComponent(eid) {
       targetCamComp = getEntitySystem("Camera").getComponent(eid);
    }
 
-   this.setEnabled = function(doit) {
-      this.Enabled = doit;
-      if(this.Enabled && !currentlyEnabled) {
-         currentlyEnabled = true;
-      }
-      else if(!self.Enabled && currentlyEnabled) {
-         currentlyEnabled = false;
-      }
-   }
-
-   this.onPropertyChanged = function(propname) {
-      if(propname == "Enabled") {
-         self.setEnabled(this.Enabled);
-      }
-   }
 
    var rotateOp = [0, 0, 0, 1];
    var tempVec = [0, 0, 0];
@@ -186,18 +171,10 @@ function MotionComponent(eid) {
 
       /////////////////////////////// handle mouse wheel ///////////////////////////////
       var mouseWheelState = Input.getMouseWheelState();
-
-      var wheel = 0;
-      if(mouseWheelState == MouseWheelState.Up) {
-         wheel = 1;
-      }
-      else if(mouseWheelState == MouseWheelState.Down) {
-         wheel = -1;
-      }
-
-      if(wheel != 0) {
+      
+      if(mouseWheelState != 0) {
          var fov = targetCamComp.FieldOfView;
-         fov += wheel * -self.MouseWheelFactor;
+         fov += mouseWheelState * -self.MouseWheelFactor;
          if(fov > 0 && fov < 120) {
             targetCamComp.FieldOfView = fov;
          }

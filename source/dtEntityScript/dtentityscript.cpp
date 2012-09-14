@@ -22,19 +22,22 @@
 * Martin Scheffler
 */
 
-#include <dtEntity/applicationcomponent.h>
+#include <dtEntity/core.h>
+#include <dtEntity/dtentity_config.h>
 #include <dtEntity/entity.h>
-#include <dtEntity/initosgviewer.h>
+#include <dtEntityOSG/initosgviewer.h>
 #include <dtEntity/mapcomponent.h>
-#include <dtEntity/windowmanager.h>
 #include <dtEntity/componentpluginmanager.h>
-#include <dtEntity/layerattachpointcomponent.h>
+#include <dtEntity/systeminterface.h>
+#include <dtEntityOSG/componentfactories.h>
 #include <iostream>
 #include <osgDB/FileUtils>
 #include <osgViewer/CompositeViewer>
 #include <osgViewer/ViewerEventHandlers>
-#include <dtEntity/profile.h>
 
+#if DTENTITY_PROFILING_ENABLED
+#include <dtEntity/profile.h>
+#endif
 
 // include the plugins we need
 USE_DTENTITYPLUGIN(dtEntitySimulation)
@@ -73,12 +76,13 @@ int main(int argc, char** argv)
 
    dtEntity::EntityManager entityManager;
    
-   if(!dtEntity::InitOSGViewer(argc, argv, viewer, entityManager, true, true))
+   if(!dtEntityOSG::InitOSGViewer(argc, argv, viewer, entityManager, true, true))
    {
       LOG_ERROR("Error setting up dtEntity!");
       return 0;
    }
-   
+
+
    dtEntity::ComponentPluginManager& pm = dtEntity::ComponentPluginManager::GetInstance();
    pm.AddPlugin("plugins/", "dtEntityV8Plugin", true);
    pm.AddPlugin("plugins/", "dtEntitySimulation", true);   
@@ -111,10 +115,9 @@ int main(int argc, char** argv)
    entityManager.EmitMessage(*msg);
    delete msg;
 
-   dtEntity::ApplicationSystem* appsys;
-   entityManager.GetEntitySystem(dtEntity::ApplicationSystem::TYPE, appsys);
-   dtEntity::WindowManager* windowManager = appsys->GetWindowManager();
-   
+   dtEntity::SystemInterface* iface = dtEntity::GetSystemInterface();
+
+#if DTENTITY_PROFILING_ENABLED
    if(profiling_enabled)
    {
       static dtEntity::StringId frameId = dtEntity::SID("Frame");
@@ -133,15 +136,12 @@ int main(int argc, char** argv)
          viewer.advance();
          CProfileManager::Stop_Profile();
 
-         // check if a window should be closed
-         windowManager->ProcessQueuedMessages();
-
          CProfileManager::Start_Profile(frameEvTrId);
          viewer.eventTraversal();
          CProfileManager::Stop_Profile();
 
          CProfileManager::Start_Profile(frameUpTrId);
-         appsys->EmitTickMessagesAndQueuedMessages();
+         iface->EmitTickMessagesAndQueuedMessages();
          viewer.updateTraversal();
          CProfileManager::Stop_Profile();
 
@@ -160,16 +160,13 @@ int main(int argc, char** argv)
       }
    }
    else
+#endif
    {
       while (!viewer.done())
       {
          viewer.advance(DBL_MAX);
-
-         // check if a window should be closed
-         windowManager->ProcessQueuedMessages();
-
          viewer.eventTraversal();
-         appsys->EmitTickMessagesAndQueuedMessages();
+         iface->EmitTickMessagesAndQueuedMessages();
          viewer.updateTraversal();
          viewer.renderingTraversals();
       }

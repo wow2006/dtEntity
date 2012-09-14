@@ -20,28 +20,17 @@
 
 #include <dtEntity/applicationcomponent.h>
 
-#include <dtEntity/cameracomponent.h>
 #include <dtEntity/dtentity_config.h>
-#include <dtEntity/commandmessages.h>
 #include <dtEntity/core.h>
+#include <dtEntity/commandmessages.h>
 #include <dtEntity/entity.h>
 #include <dtEntity/entitymanager.h>
-#include <dtEntity/layerattachpointcomponent.h>
 #include <dtEntity/mapcomponent.h>
 #include <dtEntity/uniqueid.h>
-#include <dtEntity/windowmanager.h>
-#include <dtEntity/osgsysteminterface.h>
-
+#include <dtEntity/systeminterface.h>
 #include <dtEntity/systemmessages.h>
 #include <assert.h>
-
 #include <sstream>
-#include <osg/NodeCallback>
-#include <osg/NodeVisitor>
-#include <osgViewer/View>
-#include <osgViewer/GraphicsWindow>
-#include <osgViewer/Viewer>
-#include <osgViewer/CompositeViewer>
 #include <iostream>
 
 namespace dtEntity
@@ -85,10 +74,6 @@ namespace dtEntity
       mSetSystemPropertiesFunctor = MessageFunctor(this, &ApplicationSystem::OnSetSystemProperties);
       em.RegisterForMessages(SetSystemPropertiesMessage::TYPE, mSetSystemPropertiesFunctor, "ApplicationSystem::OnSetSystemPropertie");
 
-      mCameraAddedFunctor = MessageFunctor(this, &ApplicationSystem::OnCameraAdded);
-      em.RegisterForMessages(CameraAddedMessage::TYPE, mCameraAddedFunctor, "ApplicationSystem::OnCameraAdded");
-
-      SetWindowManager(new OSGWindowManager(em));
    }
 
    ////////////////////////////////////////////////////////////////////////////
@@ -96,63 +81,6 @@ namespace dtEntity
    {
       GetEntityManager().UnregisterForMessages(SetComponentPropertiesMessage::TYPE, mSetComponentPropertiesFunctor);
       GetEntityManager().UnregisterForMessages(SetSystemPropertiesMessage::TYPE, mSetSystemPropertiesFunctor);
-      GetEntityManager().UnregisterForMessages(CameraAddedMessage::TYPE, mCameraAddedFunctor);
-   }
-
-   //////////////////////////////////////////////////////////////////////////////
-   void ApplicationSystem::EmitTickMessagesAndQueuedMessages()
-   {
-      SystemInterface* iface = GetSystemInterface();
-      float deltasimtime = iface->GetDeltaSimTime();
-      float deltarealtime = iface->GetDeltaRealTime();
-      float simtimescale = iface->GetTimeScale();
-      double simulationtime = iface->GetSimulationTime();
-
-      EntityManager& em = GetEntityManager();
-      
-      {
-         dtEntity::PostFrameMessage msg;
-         msg.SetDeltaSimTime(deltasimtime);
-         msg.SetDeltaRealTime(deltarealtime);
-         msg.SetSimTimeScale(simtimescale);
-         msg.SetSimulationTime(simulationtime);
-         em.EmitMessage(msg);
-      }
-
-      {
-         dtEntity::TickMessage msg;
-         msg.SetDeltaSimTime(deltasimtime);
-         msg.SetDeltaRealTime(deltarealtime);
-         msg.SetSimTimeScale(simtimescale);
-         msg.SetSimulationTime(simulationtime);
-         em.EmitMessage(msg);
-      }
-
-      em.EmitQueuedMessages(simulationtime);
-
-      {
-         dtEntity::EndOfFrameMessage msg;
-         msg.SetDeltaSimTime(deltasimtime);
-         msg.SetDeltaRealTime(deltarealtime);
-         msg.SetSimTimeScale(simtimescale);
-         msg.SetSimulationTime(simulationtime);
-         em.EmitMessage(msg);
-      }
-
-   }
-   
-   //////////////////////////////////////////////////////////////////////////////
-   void ApplicationSystem::SetWindowManager(WindowManager* wm) 
-   { 
-      OSGSystemInterface* iface = static_cast<OSGSystemInterface*>(GetSystemInterface());
-      iface->SetWindowManager(wm);
-   }
-         
-   //////////////////////////////////////////////////////////////////////////////
-   WindowManager* ApplicationSystem::GetWindowManager() const 
-   { 
-      OSGSystemInterface* iface = static_cast<OSGSystemInterface*>(GetSystemInterface());
-      return iface->GetWindowManager();
    }
 
    ///////////////////////////////////////////////////////////////////////////////
@@ -188,30 +116,10 @@ namespace dtEntity
    ///////////////////////////////////////////////////////////////////////////////
    void ApplicationSystem::ChangeTimeSettings(double newTime, float newTimeScale, const Timer_t& newClockTime)
    {
-      mTimeScale.Set(newTimeScale);
-
-      Timer_t newstarttick = osg::Timer::instance()->tick() - newTime / osg::Timer::instance()->getSecondsPerTick();
-      osgViewer::ViewerBase* viewer = static_cast<OSGSystemInterface*>(GetSystemInterface())->GetViewer();
-      osgViewer::CompositeViewer* cv = dynamic_cast<osgViewer::CompositeViewer*>(viewer);
-      if(cv)
-      {
-         cv->setStartTick(newstarttick);
-         // calendar time is ignored for now
-      }
-      else
-      {
-         osgViewer::Viewer* v = dynamic_cast<osgViewer::Viewer*>(viewer);
-         if(v != NULL)
-         {
-            v->setStartTick(newstarttick);
-         }
-      }
       GetSystemInterface()->SetSimulationClockTime(newClockTime);
-      TimeChangedMessage msg;
-      msg.SetSimulationTime(newTime);
-      msg.SetSimulationClockTime(newClockTime);
-      msg.SetTimeScale(newTimeScale);
-      GetEntityManager().EmitMessage(msg);
+      GetSystemInterface()->SetTimeScale(newTimeScale);
+      GetSystemInterface()->SetSimulationTime(newTime);
+
    }
 
    ///////////////////////////////////////////////////////////////////////////////
@@ -304,49 +212,5 @@ namespace dtEntity
       
    }
 
-
-   ///////////////////////////////////////////////////////////////////////////////
-   void ApplicationSystem::OnCameraAdded(const Message& m)
-   {
-      const CameraAddedMessage& msg = static_cast<const CameraAddedMessage&>(m);
-      CameraComponent* camcomp;
-
-      
-      if(!GetEntityManager().GetComponent(msg.GetAboutEntityId(), camcomp))
-      {
-         LOG_ERROR("Camera not found!");
-         return;
-      }
-      
-      osgViewer::View* view = dynamic_cast<osgViewer::View*>(camcomp->GetCamera()->getView());
-      if(view)
-      {
-         osgViewer::View::EventHandlers& eh = view->getEventHandlers();
-         if(std::find(eh.begin(), eh.end(),&GetWindowManager()->GetInputHandler()) ==  eh.end())
-         {
-            eh.push_back(&GetWindowManager()->GetInputHandler());
-         }
-      }
-      else
-      {
-         LOG_ERROR("Encountered unknown view type!");
-      }
-
-      LayerAttachPointSystem* lsys;
-      GetEntityManager().GetEntitySystem(LayerAttachPointComponent::TYPE, lsys);
-      if(camcomp->GetLayerAttachPoint() != LayerAttachPointSystem::RootId)
-      {
-         LayerAttachPointComponent* lc;
-         if(lsys->GetByName(camcomp->GetLayerAttachPoint(), lc))
-         {
-            OSGSystemInterface* iface = static_cast<OSGSystemInterface*>(GetSystemInterface());
-            iface->InstallUpdateCallback(lc->GetNode());
-         }
-         else
-         {
-            LOG_ERROR("Cannot install update callback for layer attach point " << GetStringFromSID(camcomp->GetLayerAttachPoint()));
-         }
-      }
-   }
 
 }

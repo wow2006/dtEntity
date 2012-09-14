@@ -20,9 +20,10 @@
 
 #include <dtEntityWrappers/debugdrawmanagerwrapper.h>
 
+#include <dtEntity/core.h>
 #include <dtEntity/entitymanager.h>
 #include <dtEntityWrappers/entitymanagerwrapper.h>
-#include <dtEntity/debugdrawmanager.h>
+#include <dtEntity/debugdrawinterface.h>
 #include <dtEntityWrappers/scriptcomponent.h>
 #include <dtEntityWrappers/v8helpers.h>
 #include <iostream>
@@ -39,28 +40,27 @@ namespace dtEntityWrappers
    ////////////////////////////////////////////////////////////////////////////////
    Handle<Value> DebugDrawManagerToString(const Arguments& args)
    {
-      return String::New("<DebugDrawManager>");
+      return String::New("<DebugDrawInterface>");
    }
 
    ////////////////////////////////////////////////////////////////////////////////
    Handle<Value> DebugDrawManagerSetEnabled(const Arguments& args)
    {
-      dtEntity::DebugDrawManager* ddm; GetInternal(args.This(), 0, ddm);
-      ddm->SetEnabled(args[0]->BooleanValue());
+      dtEntity::GetDebugDrawInterface()->SetEnabled(args[0]->BooleanValue());
       return Undefined();
    }
 
    ////////////////////////////////////////////////////////////////////////////////
    Handle<Value> DebugDrawManagerIsEnabled(const Arguments& args)
-   {
-      dtEntity::DebugDrawManager* ddm; GetInternal(args.This(), 0, ddm);
-      return Boolean::New(ddm->IsEnabled());
+   {      
+      return Boolean::New(dtEntity::GetDebugDrawInterface()->IsEnabled());
    }
 
    ////////////////////////////////////////////////////////////////////////////////
    Handle<Value> DebugDrawManagerAddLine(const Arguments& args)
    {
-      dtEntity::DebugDrawManager* ddm; GetInternal(args.This(), 0, ddm);
+      dtEntity::DebugDrawInterface* ddm = dtEntity::GetDebugDrawInterface();
+
       if(!ddm->IsEnabled() )
       {
          return Undefined();
@@ -71,10 +71,10 @@ namespace dtEntityWrappers
          return ThrowError("usage: addLine(Vec3 start, Vec3 end, [Vec4 color, Int lineWidth, Number duration, bool useDepthTest])");
       }
 
-      osg::Vec3f start = UnwrapVec3(args[0]);
-      osg::Vec3f end = UnwrapVec3(args[1]);
+      dtEntity::Vec3f start = UnwrapVec3(args[0]);
+      dtEntity::Vec3f end = UnwrapVec3(args[1]);
 
-      osg::Vec4f color(1,0,0,1);
+      dtEntity::Vec4f color(1,0,0,1);
       if(args.Length() > 2 && IsVec4(args[2]))
       {
          color = UnwrapVec4(args[2]);
@@ -110,7 +110,7 @@ namespace dtEntityWrappers
    ////////////////////////////////////////////////////////////////////////////////
    Handle<Value> DebugDrawManagerAddLines(const Arguments& args)
    {
-      dtEntity::DebugDrawManager* ddm; GetInternal(args.This(), 0, ddm);
+      dtEntity::DebugDrawInterface* ddm = dtEntity::GetDebugDrawInterface();
 
       if(!ddm->IsEnabled() )
       {
@@ -122,7 +122,7 @@ namespace dtEntityWrappers
          return ThrowError("usage: addLines(Array(Vec3) lines,[Vec4 color, Int lineWidth, Number duration, bool useDepthTest])");
       }
 
-      std::vector<osg::Vec3> lines;
+      std::vector<dtEntity::Vec3f> lines;
       HandleScope scope;
       Handle<Array> arr = Handle<Array>::Cast(args[0]);
       
@@ -132,7 +132,7 @@ namespace dtEntityWrappers
          lines.push_back(UnwrapVec3(arr->Get(i)));
       }
       
-      osg::Vec4f color(1,0,0,1);
+      dtEntity::Vec4f color(1,0,0,1);
       if(args.Length() > 1 && IsVec4(args[1]))
       {
          color = UnwrapVec4(args[1]);
@@ -167,7 +167,7 @@ namespace dtEntityWrappers
    ////////////////////////////////////////////////////////////////////////////////
    Handle<Value> DebugDrawManagerAddAABB(const Arguments& args)
    {
-      dtEntity::DebugDrawManager* ddm; GetInternal(args.This(), 0, ddm);
+      dtEntity::DebugDrawInterface* ddm = dtEntity::GetDebugDrawInterface();
 
       if(!ddm->IsEnabled() )
       {
@@ -179,10 +179,10 @@ namespace dtEntityWrappers
          return ThrowError("usage: addAABB(Vec3 min, Vec3 max, [Vec4 color, Int lineWidth, Number duration, bool useDepthTest])");
       }
 
-      osg::Vec3f min = UnwrapVec3(args[0]);
-      osg::Vec3f max = UnwrapVec3(args[1]);
+      dtEntity::Vec3f min = UnwrapVec3(args[0]);
+      dtEntity::Vec3f max = UnwrapVec3(args[1]);
 
-      osg::Vec4f color(1,0,0,1);
+      dtEntity::Vec4f color(1,0,0,1);
       if(args.Length() > 2  && IsVec4(args[2]))
       {
          color = UnwrapVec4(args[2]);
@@ -217,7 +217,7 @@ namespace dtEntityWrappers
    ////////////////////////////////////////////////////////////////////////////////
    Handle<Value> DebugDrawManagerAddCross(const Arguments& args)
    {
-      dtEntity::DebugDrawManager* ddm; GetInternal(args.This(), 0, ddm);
+      dtEntity::DebugDrawInterface* ddm = dtEntity::GetDebugDrawInterface();
 
       if(!ddm->IsEnabled() )
       {
@@ -228,9 +228,9 @@ namespace dtEntityWrappers
       {
          return ThrowError("usage: addCross(Vec3 position, Vec4 color, [int linewidth, Number duration, bool useDepthTest])");
       }
-      osg::Vec3f pos = UnwrapVec3(args[0]);
+      dtEntity::Vec3f pos = UnwrapVec3(args[0]);
 
-      osg::Vec4f color = UnwrapVec4(args[1]);
+      dtEntity::Vec4f color = UnwrapVec4(args[1]);
 
 
       int linewidth = 1;
@@ -258,7 +258,7 @@ namespace dtEntityWrappers
    ////////////////////////////////////////////////////////////////////////////////
    Handle<Value> DebugDrawManagerAddCircle(const Arguments& args)
    {
-      dtEntity::DebugDrawManager* ddm; GetInternal(args.This(), 0, ddm);
+      dtEntity::DebugDrawInterface* ddm = dtEntity::GetDebugDrawInterface();
 
       if(!ddm->IsEnabled() )
       {
@@ -269,11 +269,11 @@ namespace dtEntityWrappers
       {
          return ThrowError("usage: addCircle(Vec3 position, Vec3 normal, number radius, Vec4 color, [Number duration, bool useDepthTest])");
       }
-      osg::Vec3f pos = UnwrapVec3(args[0]);
-      osg::Vec3f nrml = UnwrapVec3(args[1]);
+      dtEntity::Vec3f pos = UnwrapVec3(args[0]);
+      dtEntity::Vec3f nrml = UnwrapVec3(args[1]);
       double radius = args[2]->NumberValue();
 
-      osg::Vec4f color(1,0,0,1);
+      dtEntity::Vec4f color(1,0,0,1);
       if(args.Length() > 3 && IsVec4(args[3]))
       {
          color = UnwrapVec4(args[3]);
@@ -298,7 +298,7 @@ namespace dtEntityWrappers
    ////////////////////////////////////////////////////////////////////////////////
    Handle<Value> DebugDrawManagerAddSphere(const Arguments& args)
    {
-      dtEntity::DebugDrawManager* ddm; GetInternal(args.This(), 0, ddm);
+      dtEntity::DebugDrawInterface* ddm = dtEntity::GetDebugDrawInterface();
 
       if(!ddm->IsEnabled() )
       {
@@ -309,11 +309,11 @@ namespace dtEntityWrappers
       {
          return ThrowError("usage: addSphere(Vec3 position, number radius, Vec4 color, Number duration, bool useDepthTest])");
       }
-      osg::Vec3f pos = UnwrapVec3(args[0]);
+      dtEntity::Vec3f pos = UnwrapVec3(args[0]);
 
       float radius = args[1]->NumberValue();
 
-      osg::Vec4f color(1,0,0,1);
+      dtEntity::Vec4f color(1,0,0,1);
       if(args.Length() > 2 && IsVec4(args[2]))
       {
          color = UnwrapVec4(args[2]);
@@ -338,7 +338,7 @@ namespace dtEntityWrappers
 	////////////////////////////////////////////////////////////////////////////////
    Handle<Value> DebugDrawManagerAddString(const Arguments& args)
    {
-      dtEntity::DebugDrawManager* ddm; GetInternal(args.This(), 0, ddm);
+      dtEntity::DebugDrawInterface* ddm = dtEntity::GetDebugDrawInterface();
 
       if(!ddm->IsEnabled() )
       {
@@ -349,11 +349,11 @@ namespace dtEntityWrappers
       {
          return ThrowError("usage: addString(Vec3 position, text, Vec4 color, Number duration, bool useDepthTest])");
       }
-      osg::Vec3f pos = UnwrapVec3(args[0]);
+      dtEntity::Vec3f pos = UnwrapVec3(args[0]);
 
 		std::string text = ToStdString(args[1]);
 
-      osg::Vec4f color(1,0,0,1);
+      dtEntity::Vec4f color(1,0,0,1);
       if(args.Length() > 2 && IsVec4(args[2]))
       {
          color = UnwrapVec4(args[2]);
@@ -378,7 +378,7 @@ namespace dtEntityWrappers
    ////////////////////////////////////////////////////////////////////////////////
    Handle<Value> DebugDrawManagerAddTriangle(const Arguments& args)
    {
-      dtEntity::DebugDrawManager* ddm; GetInternal(args.This(), 0, ddm);
+      dtEntity::DebugDrawInterface* ddm = dtEntity::GetDebugDrawInterface();
 
       if(!ddm->IsEnabled() )
       {
@@ -391,11 +391,11 @@ namespace dtEntityWrappers
          return ThrowError("usage: addTriangle(Vec3 v1, Vec3 v2, Vec3 v3, Vec4 color, [int linewidth, Number duration, bool useDepthTest])");
       }
 
-      osg::Vec3f v0 = UnwrapVec3(args[0]);
-      osg::Vec3f v1 = UnwrapVec3(args[1]);
-      osg::Vec3f v2 = UnwrapVec3(args[2]);
+      dtEntity::Vec3f v0 = UnwrapVec3(args[0]);
+      dtEntity::Vec3f v1 = UnwrapVec3(args[1]);
+      dtEntity::Vec3f v2 = UnwrapVec3(args[2]);
 
-      osg::Vec4f color = UnwrapVec4(args[3]);
+      dtEntity::Vec4f color = UnwrapVec4(args[3]);
 
       int linewidth = 1;
       if(args.Length() > 4)
@@ -419,46 +419,13 @@ namespace dtEntityWrappers
       return Undefined();
    }
 
-   ////////////////////////////////////////////////////////////////////////////////
-	void DebugDrawManager_destroy(Persistent<Value> v, void* ptr) {
-		HandleScope scope;
-		Handle<Object> o = Handle<Object>::Cast(v);
-		dtEntity::DebugDrawManager * ddm = 
-         reinterpret_cast<dtEntity::DebugDrawManager*>(o->GetPointerFromInternalField(0));
-		delete ddm;
-		v.Dispose();
-	}
+
 
    ////////////////////////////////////////////////////////////////////////////////
 	Handle<Value> DebugDrawManagerClear(const Arguments& args) 
    {
-		dtEntity::DebugDrawManager* ddm; GetInternal(args.This(), 0, ddm);
-      ddm->Clear();
+      dtEntity::GetDebugDrawInterface()->Clear();
       return Undefined();
-	}
-
-   ////////////////////////////////////////////////////////////////////////////////
-   void DebugDrawManagerDestructor(v8::Persistent<Value> v, void* scriptsysnull)
-   {      
-      Handle<External> ext = Handle<External>::Cast(v);
-      assert(!ext.IsEmpty());
-      dtEntity::DebugDrawManager* ddm = reinterpret_cast<dtEntity::DebugDrawManager*>(ext->Value());
-      delete ddm;
-      v.Dispose();
-   }
-   
-   ////////////////////////////////////////////////////////////////////////////////
-	Handle<Value> DebugDrawManager_create(const Arguments& args) {
-      v8::HandleScope handle_scope;
-      Handle<Context> context = args.This()->CreationContext();
-     
-		Handle<Object> emh = Handle<Object>::Cast(context->Global()->Get(String::New("EntityManager")));
-      dtEntity::EntityManager* em = UnwrapEntityManager(emh);
-      Handle<External> ext = External::New(new dtEntity::DebugDrawManager(*em));
-      args.This()->SetInternalField(0, ext);
-      Persistent<External> p = Persistent<External>::New(ext);
-      p.MakeWeak(NULL, &DebugDrawManagerDestructor);
-      return args.This();
 	}
 
    ////////////////////////////////////////////////////////////////////////////////
@@ -470,7 +437,7 @@ namespace dtEntityWrappers
       if(templt.IsEmpty())
       {
 
-        templt = FunctionTemplate::New(DebugDrawManager_create);
+        templt = FunctionTemplate::New();
         templt->SetClassName(String::New("DebugDrawManager"));
         templt->InstanceTemplate()->SetInternalFieldCount(1);
 
