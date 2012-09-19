@@ -24,7 +24,7 @@
 #include <dtEntity/entitymanager.h>
 #include <dtEntity/mapencoder.h>
 #include <dtEntity/property.h>
-#include <rapidxml.hpp>
+#include "rapidxml.hpp"
 
 namespace dtEntity
 {
@@ -36,7 +36,7 @@ namespace dtEntity
    class DT_ENTITY_EXPORT RapidXMLMapEncoder
          : public MapEncoder
    {
-      
+
    public:
 
       RapidXMLMapEncoder(EntityManager& em);
