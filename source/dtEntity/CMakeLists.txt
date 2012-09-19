@@ -63,7 +63,7 @@ SET(LIB_PUBLIC_HEADERS
   ${HEADER_PATH}/entitysystem.h
   ${HEADER_PATH}/export.h
   ${HEADER_PATH}/FastDelegate.h
-  ${HEADER_PATH}/FastDelegateBind.h  
+  ${HEADER_PATH}/FastDelegateBind.h
   ${HEADER_PATH}/init.h
   ${HEADER_PATH}/inputinterface.h
   ${HEADER_PATH}/log.h
@@ -90,7 +90,10 @@ SET(LIB_PUBLIC_HEADERS
   ${HEADER_PATH}/uniqueid.h
   ${HEADER_PATH}/windowinterface.h
   ${DTENTITY_CONFIG_HEADER}
-
+  ${CMAKE_CURRENT_SOURCE_DIR}/../../ext/RapidXML/rapidxml.hpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/../../ext/RapidXML/rapidxml_iterators.hpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/../../ext/RapidXML/rapidxml_print.hpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/../../ext/RapidXML/rapidxml_utils.hpp
 )
 
 
@@ -106,7 +109,7 @@ SET(LIB_REPLACE
 
 SET(LIB_SOURCES
   componentfactories.cpp
-  componentpluginmanager.cpp  
+  componentpluginmanager.cpp
   entity.cpp
   entitymanager.cpp
   hash.cpp
@@ -186,7 +189,7 @@ SET_TARGET_PROPERTIES(${LIB_NAME}
 if(MSVC)
  SET_TARGET_PROPERTIES(${PROJECT_NAME} PROPERTIES
      LINK_FLAGS "/FORCE:MULTIPLE")
-endif()   
+endif()
 
 INCLUDE(ModuleInstall OPTIONAL)
 
