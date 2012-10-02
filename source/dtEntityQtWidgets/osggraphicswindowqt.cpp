@@ -95,7 +95,7 @@ namespace dtEntityQtWidgets
       QGLWidget* sharedContextWidget = NULL;
       if (traits->sharedContext != NULL)
       {
-         OSGGraphicsWindowQt* sharedWin = dynamic_cast<OSGGraphicsWindowQt*>(traits->sharedContext);
+         OSGGraphicsWindowQt* sharedWin = dynamic_cast<OSGGraphicsWindowQt*>(traits->sharedContext.get());
          if (sharedWin != NULL)
          {
             sharedContextWidget = sharedWin->GetQGLWidget();
@@ -162,7 +162,7 @@ namespace dtEntityQtWidgets
           setState( new osg::State );
           getState()->setGraphicsContext(this);
 
-          if (_traits.valid() && _traits->sharedContext)
+          if (_traits.valid() && _traits->sharedContext.valid())
           {
               getState()->setContextID( _traits->sharedContext->getState()->getContextID() );
               incrementContextIDUsageCount( getState()->getContextID() );
